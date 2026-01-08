@@ -7,6 +7,7 @@ export async function POST(request) {
         const paramsToSign = {
             timestamp,
             folder: 'saveethabase',
+            upload_preset: 'saveethabase',
         }
 
         const signature = cloudinary.utils.api_sign_request(

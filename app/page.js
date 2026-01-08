@@ -639,6 +639,7 @@ export default function SaveethaBase() {
       formData.append('timestamp', signData.timestamp);
       formData.append('signature', signData.signature);
       formData.append('folder', 'saveethabase');
+      formData.append('upload_preset', 'saveethabase');
 
       const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/auto/upload`, {
         method: 'POST',
