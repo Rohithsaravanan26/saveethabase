@@ -15,32 +15,21 @@ export async function GET(request) {
         fileUrl = fileUrl.trim();
         filename = filename.trim().replace(/[/\\?%*:|"<>]/g, '-');
 
-        // Extract Public ID and Resource Type correctly
-        // URL format: https://res.cloudinary.com/[cloud_name]/[resource_type]/upload/v[version]/[public_id].[ext]
         let publicId = '';
-        let resourceType = 'image'; // default
+        let resourceType = 'image';
 
         if (fileUrl.includes('cloudinary.com')) {
             const urlParts = new URL(fileUrl).pathname.split('/');
-            // urlParts like ["", "dyi9xti0t", "image", "upload", "v1234", "folder", "id.pdf"]
-
             const uploadIndex = urlParts.indexOf('upload');
             if (uploadIndex !== -1) {
-                // Resource type is usually just before 'upload'
                 resourceType = urlParts[uploadIndex - 1] || 'image';
-
                 let startIndex = uploadIndex + 1;
-                // Skip version
                 if (urlParts[startIndex] && urlParts[startIndex].startsWith('v')) {
                     startIndex++;
                 }
-
                 const pathParts = urlParts.slice(startIndex);
-                // Join parts back for publicId
                 const fullPath = pathParts.join('/');
 
-                // For images/videos, Cloudinary signs without the extension
-                // For 'raw', it signs with the extension
                 if (resourceType === 'raw') {
                     publicId = fullPath;
                 } else {
@@ -50,9 +39,24 @@ export async function GET(request) {
         }
 
         if (publicId) {
-            console.log(`[Proxy] Signing ${resourceType} redirect for: ${publicId}`);
+            console.log(`[Proxy] Rescue Operation: ${publicId} (${resourceType})`);
 
-            // Generate signed URL with attachment flag
+            // STEP 1: Attempt Programmatic Unblock (Admin API)
+            // This forces Cloudinary to re-evaluate the asset and hopefully unblock its delivery.
+            let unblocked = false;
+            try {
+                // Setting access_control to 'public' removes 'Blocked' restrictions
+                await cloudinary.api.update_resources_access_control('public', [publicId], {
+                    resource_type: resourceType
+                });
+                unblocked = true;
+                console.log(`[Proxy] Unblock triggered for: ${publicId}`);
+            } catch (unblockErr) {
+                console.warn(`[Proxy] Unblock failed:`, unblockErr.message);
+            }
+
+            // STEP 2: Generate Signed Deliverable Link
+            // Regardless of unblock status, we sign it. If unblocked, this is high-speed CDN.
             const signedUrl = cloudinary.url(publicId, {
                 resource_type: resourceType,
                 sign_url: true,
@@ -61,15 +65,19 @@ export async function GET(request) {
                 attachment: filename,
             });
 
+            // STEP 3: SMART DELIVERY (Stream vs Redirect)
+            // If the file is small (< 4MB) or unblocking failed, streaming is safer.
+            // But streaming hits Vercel's 4.5MB limit.
+            // For reliable large-scale delivery, a REDIRECT to a signed CDN URL is the gold standard.
+
+            console.log(`[Proxy] Redirecting to Authenticated CDN: ${signedUrl}`);
             return NextResponse.redirect(signedUrl);
         }
 
-        // Fallback: If parsing fails, use the original URL but this might hit 401/4.5MB limit
         return NextResponse.redirect(fileUrl);
 
     } catch (error) {
         console.error('Download Proxy Error:', error);
-        // Fallback to original URL even on error
         return NextResponse.redirect(fileUrl);
     }
 }

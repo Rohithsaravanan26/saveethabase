@@ -50,29 +50,28 @@ const AdWallModal = ({ file, onClose, onDownload }) => {
                     </div>
 
                     <button
-                        onClick={onDownload}
+                        onClick={handleActualDownload}
                         disabled={timeLeft > 0}
-                        className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all
-              ${timeLeft > 0
+                        className={`w-full flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-bold text-lg transition-all shadow-xl active:scale-[0.98] ${timeLeft > 0
                                 ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg hover:shadow-emerald-500/30'
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-indigo-200 cursor-pointer'
                             }`}
                     >
-                        {timeLeft > 0 ? `Wait ${timeLeft}s` : 'Download Now'}
+                        {timeLeft > 0 ? `Wait ${timeLeft}s` : 'Download via Master Tunnel'}
                         {timeLeft === 0 && <Download size={24} />}
                     </button>
 
                     {timeLeft === 0 && (
                         <div className="mt-8 p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                            <p className="text-sm font-bold text-slate-800 mb-1">Getting "Something went wrong"?</p>
-                            <p className="text-xs text-slate-500 mb-4">Browsers like Edge can block secure downloads. Use the direct link below:</p>
+                            <p className="text-sm font-bold text-slate-800 mb-1">Mirror Link (Direct Bypass)</p>
+                            <p className="text-xs text-slate-500 mb-4">If the main button fails, this link uses a secondary authenticated tunnel:</p>
                             <a
                                 href={`/api/download?url=${encodeURIComponent(file.file_url)}&filename=${encodeURIComponent(file.title || 'resource')}.${file.file_type || 'pdf'}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-xl font-bold text-base hover:bg-indigo-700 shadow-md transition-all active:scale-95"
                             >
-                                <Download size={20} /> Use Direct Mirror Link
+                                <Download size={20} /> Use Rescue Mirror Link
                             </a>
                         </div>
                     )}
