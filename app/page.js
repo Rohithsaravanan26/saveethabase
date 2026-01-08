@@ -101,7 +101,7 @@ const DownloadModal = ({ show, onClose, onDownload, processing, countdown, statu
   );
 };
 
-const UploadModal = ({ show, onClose, form, setForm, onSubmit, uploading }) => {
+const UploadModal = ({ show, onClose, form, setForm, onSubmit, uploading, onFileChange }) => {
   if (!show) return null;
   const categories = ['PYQ', 'CIA Paper', 'Study Material', 'Lab Record', 'Project File'];
   const departments = ['CSE', 'ECE', 'MECH', 'CIVIL', 'EEE', 'IT'];
@@ -161,7 +161,7 @@ const UploadModal = ({ show, onClose, form, setForm, onSubmit, uploading }) => {
           </div>
 
           <div className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer">
-            <input type="file" accept=".pdf,.docx" onChange={handleFileChange} className="hidden" id="file-upload" />
+            <input type="file" accept=".pdf,.docx" onChange={onFileChange} className="hidden" id="file-upload" />
             <label htmlFor="file-upload" className="cursor-pointer">
               <Upload className="mx-auto text-blue-600 mb-3" size={48} />
               <p className="text-base text-gray-700 font-semibold mb-1">{form.file ? form.file.name : 'Click to upload'}</p>
@@ -1070,7 +1070,7 @@ export default function SaveethaBase() {
         {/* Modal Portals */}
 
         {/* Modal Portals */}
-        {showUploadModal && <UploadModal show={showUploadModal} onClose={() => setShowUploadModal(false)} form={uploadForm} setForm={setUploadForm} onSubmit={handleUploadSubmit} uploading={uploading} />}
+        {showUploadModal && <UploadModal show={showUploadModal} onClose={() => setShowUploadModal(false)} form={uploadForm} setForm={setUploadForm} onSubmit={handleUploadSubmit} uploading={uploading} onFileChange={handleFileChange} />}
         {showProfileModal && <ProfileModal show={showProfileModal} onClose={() => setShowProfileModal(false)} user={user} onSignOut={signOut} />}
         {showRequestForm && <RequestModal show={showRequestForm} onClose={() => setShowRequestForm(false)} form={requestForm} setForm={setRequestForm} onSubmit={handleRequestSubmit} />}
 

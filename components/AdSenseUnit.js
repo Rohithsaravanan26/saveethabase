@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 
 const AdSenseUnit = ({ slot, style }) => {
     useEffect(() => {
+        if (!process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID) return;
         try {
             (window.adsbygoogle = window.adsbygoogle || []).push({});
         } catch (e) {
