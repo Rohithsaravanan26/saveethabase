@@ -50,11 +50,11 @@ const AdWallModal = ({ file, onClose, onDownload }) => {
                     </div>
 
                     <button
-                        onClick={handleActualDownload}
+                        onClick={onDownload}
                         disabled={timeLeft > 0}
                         className={`w-full flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-bold text-lg transition-all shadow-xl active:scale-[0.98] ${timeLeft > 0
-                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-indigo-200 cursor-pointer'
+                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-indigo-200 cursor-pointer'
                             }`}
                     >
                         {timeLeft > 0 ? `Wait ${timeLeft}s` : 'Download via Master Tunnel'}
