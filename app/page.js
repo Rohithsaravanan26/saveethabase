@@ -510,37 +510,28 @@ export default function SaveethaBase() {
   };
 
   const handleActualDownload = () => {
+    if (!selectedFile || !selectedFile.file_url) return;
+
     let filename = selectedFile.title || 'download';
     if (selectedFile.file_type && !filename.endsWith(`.${selectedFile.file_type}`)) {
       filename += `.${selectedFile.file_type}`;
     }
 
-    // Cloudinary direct link if file is likely over Vercel's 4.5MB limit
-    const isLargeFile = true; // Since we don't have size on the object, we assume large if it's Cloudinary
+    showToast('Download started - opening in new tab');
 
-    if (isLargeFile) {
-      showToast('Downloading from storage...');
-      // Force download by injecting fl_attachment into Cloudinary URL
-      const downloadUrl = selectedFile.file_url.replace('/upload/', '/upload/fl_attachment/');
+    // Direct link to storage - HIGH COMPATIBILITY method
+    // We avoid fl_attachment because it can cause ERR_INVALID_RESPONSE for some PDFs
+    // We bypass the proxy for Cloudinary files to avoid Vercel's 4.5MB limit
+    const downloadUrl = selectedFile.file_url;
 
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.setAttribute('download', filename);
-      link.setAttribute('target', '_blank');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      const proxyUrl = `/api/download?url=${encodeURIComponent(selectedFile.file_url)}&filename=${encodeURIComponent(filename)}`;
-      const link = document.createElement('a');
-      link.href = proxyUrl;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', filename); // Browser may ignore for cross-origin
+    link.setAttribute('target', '_blank'); // Opens in new tab as fallback
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-    showToast('Download started successfully!');
     setShowAdWall(false);
   };
 
