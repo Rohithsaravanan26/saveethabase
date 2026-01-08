@@ -519,9 +519,12 @@ export default function SaveethaBase() {
     const isLargeFile = true; // Since we don't have size on the object, we assume large if it's Cloudinary
 
     if (isLargeFile) {
-      showToast('Downloading directly from storage (bypass server limit)');
+      showToast('Downloading from storage...');
+      // Force download by injecting fl_attachment into Cloudinary URL
+      const downloadUrl = selectedFile.file_url.replace('/upload/', '/upload/fl_attachment/');
+
       const link = document.createElement('a');
-      link.href = selectedFile.file_url;
+      link.href = downloadUrl;
       link.setAttribute('download', filename);
       link.setAttribute('target', '_blank');
       document.body.appendChild(link);
