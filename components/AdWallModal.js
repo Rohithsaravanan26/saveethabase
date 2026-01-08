@@ -67,7 +67,7 @@ const AdWallModal = ({ file, onClose, onDownload }) => {
                             <p className="text-sm font-bold text-slate-800 mb-1">Getting "Something went wrong"?</p>
                             <p className="text-xs text-slate-500 mb-4">Browsers like Edge can block secure downloads. Use the direct link below:</p>
                             <a
-                                href={file.file_url?.replace('/upload/', '/upload/fl_attachment/')}
+                                href={`/api/download?url=${encodeURIComponent(file.file_url)}&filename=${encodeURIComponent(file.title || 'resource')}.${file.file_type || 'pdf'}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-xl font-bold text-base hover:bg-indigo-700 shadow-md transition-all active:scale-95"
