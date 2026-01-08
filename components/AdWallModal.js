@@ -63,16 +63,18 @@ const AdWallModal = ({ file, onClose, onDownload }) => {
                     </button>
 
                     {timeLeft === 0 && (
-                        <div className="mt-4 text-xs text-slate-400">
-                            Problem with the link?
+                        <div className="mt-6 pt-6 border-t border-slate-100">
+                            <p className="text-sm text-slate-500 mb-2 font-medium">Problem with the main button?</p>
                             <a
                                 href={file.file_url}
+                                download={`${file.title || 'resource'}.${file.file_type || 'pdf'}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="ml-1 text-indigo-600 hover:underline font-medium"
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all border border-slate-200"
                             >
-                                Try Mirror Link (Direct)
+                                <Download size={16} /> Try Mirror Link (Direct)
                             </a>
+                            <p className="text-[10px] text-slate-400 mt-2 italic">Note: Use this if "Download Now" fails for large files.</p>
                         </div>
                     )}
                 </div>
