@@ -652,27 +652,19 @@ export default function SaveethaBase() {
 
     setUploading(true);
     try {
-      // 1. Get Signature from backend
-      const signRes = await fetch('/api/upload/sign', { method: 'POST' });
-      const signData = await signRes.json();
-      if (!signRes.ok) throw new Error(signData.error || 'Failed to get upload signature');
+      // 1. Get Cloud Configuration from backend
+      const configRes = await fetch('/api/upload/sign', { method: 'POST' });
+      const configData = await configRes.json();
+      if (!configRes.ok) throw new Error(configData.error || 'Failed to get upload configuration');
 
-      // 2. Upload to Cloudinary Directly from browser
+      // 2. Upload to Cloudinary (Unsigned)
       const formData = new FormData();
       formData.append('file', uploadForm.file);
-      formData.append('api_key', signData.apiKey);
-      formData.append('timestamp', signData.timestamp);
-      formData.append('signature', signData.signature);
-      formData.append('folder', 'saveethabase');
-      formData.append('type', 'upload'); // Ensure public upload type
-      // IMPORTANT: The upload_preset in Cloudinary console may override these settings
-      // If files are still blocked, you need to update the preset in Cloudinary console:
-      // 1. Go to Settings > Upload > Upload presets
-      // 2. Edit 'saveethabase' preset
-      // 3. Set "Access mode" to "Public" or remove access restrictions
       formData.append('upload_preset', 'saveethabase');
+      // Note: In Unsigned mode, 'folder' should be set in the Cloudinary Preset UI, 
+      // not sent via form data, unless specifically allowed.
 
-      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/auto/upload`, {
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${configData.cloudName}/auto/upload`, {
         method: 'POST',
         body: formData
       });
