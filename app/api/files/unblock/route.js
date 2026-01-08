@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase-server';
 export async function POST(request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -45,32 +45,33 @@ export async function POST(request) {
 
         for (let i = 0; i < methods.length; i++) {
             try {
-                await methods[i]();
+                const result = await methods[i]();
+                console.log(`[Unblock] Method ${i + 1} succeeded for ${publicId}:`, result);
                 unblocked = true;
-                console.log(`[Unblock] Successfully unblocked ${publicId} using method ${i + 1}`);
                 break;
             } catch (error) {
-                console.warn(`[Unblock] Method ${i + 1} failed for ${publicId}:`, error.message);
+                console.warn(`[Unblock] Method ${i + 1} failed for ${publicId} (${resourceType}):`, error.message);
+                if (error.http_code) console.warn(`[Unblock] HTTP Code: ${error.http_code}`);
             }
         }
 
         if (!unblocked) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 error: 'Failed to unblock asset',
                 warning: 'Asset may still be blocked. Please check Cloudinary console.'
             }, { status: 500 });
         }
 
-        return NextResponse.json({ 
+        return NextResponse.json({
             success: true,
             message: 'Asset unblocked successfully'
         });
 
     } catch (error) {
         console.error('Unblock error:', error);
-        return NextResponse.json({ 
+        return NextResponse.json({
             error: 'Failed to unblock asset',
-            message: error.message 
+            message: error.message
         }, { status: 500 });
     }
 }

@@ -661,10 +661,9 @@ export default function SaveethaBase() {
       const formData = new FormData();
       formData.append('file', uploadForm.file);
       formData.append('upload_preset', 'saveethabase');
-      // Note: In Unsigned mode, 'folder' should be set in the Cloudinary Preset UI, 
-      // not sent via form data, unless specifically allowed.
+      formData.append('resource_type', 'auto'); // Let Cloudinary decide accurately
 
-      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${configData.cloudName}/auto/upload`, {
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${configData.cloudName}/upload`, {
         method: 'POST',
         body: formData
       });
@@ -672,9 +671,10 @@ export default function SaveethaBase() {
 
       if (!uploadRes.ok) throw new Error(uploadData.error?.message || 'Cloudinary upload failed');
 
-      // 2.5. Unblock the asset immediately after upload (in case preset blocked it)
+      // 2.5. Unblock the asset immediately after upload
+      console.log(`[Upload] Asset uploaded as ${uploadData.resource_type}. Attempting unblock for ${uploadData.public_id}...`);
       try {
-        await fetch('/api/files/unblock', {
+        const unblockRes = await fetch('/api/files/unblock', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -682,10 +682,14 @@ export default function SaveethaBase() {
             resourceType: uploadData.resource_type
           })
         });
-        console.log('Asset unblocked after upload');
+        const unblockData = await unblockRes.json();
+        if (unblockRes.ok) {
+          console.log('✅ Asset unblocked successfully after upload');
+        } else {
+          console.warn('⚠️ Unblock API returned error:', unblockData.error);
+        }
       } catch (unblockError) {
-        console.warn('Failed to unblock asset after upload (non-critical):', unblockError);
-        // Continue anyway - download route will try to unblock on demand
+        console.warn('❌ Failed to call unblock API:', unblockError.message);
       }
 
       // 2. Save Metadata to Supabase (using snake_case for DB)

@@ -22,9 +22,9 @@ export async function GET(request) {
             isValidUrl = true;
         } catch (urlError) {
             console.error('Invalid URL format:', fileUrl);
-            return NextResponse.json({ 
+            return NextResponse.json({
                 error: 'Invalid file URL format',
-                details: urlError.message 
+                details: urlError.message
             }, { status: 400 });
         }
 
@@ -41,11 +41,11 @@ export async function GET(request) {
                 const urlObj = new URL(fileUrl);
                 const urlParts = urlObj.pathname.split('/').filter(p => p); // Remove empty parts
                 const uploadIndex = urlParts.indexOf('upload');
-                
+
                 if (uploadIndex !== -1 && uploadIndex > 0) {
                     resourceType = urlParts[uploadIndex - 1] || 'raw'; // Default to 'raw' for uploaded files
                     let startIndex = uploadIndex + 1;
-                    
+
                     // Skip signature (s--...--), transformations (fl_attachment, etc.), and version (v1, v1234567890)
                     while (startIndex < urlParts.length) {
                         const part = urlParts[startIndex];
@@ -67,7 +67,7 @@ export async function GET(request) {
                         // If we get here, we've reached the public ID part
                         break;
                     }
-                    
+
                     // Everything after transformations/signatures/version is the public ID
                     const pathParts = urlParts.slice(startIndex);
                     const fullPath = pathParts.join('/');
@@ -80,7 +80,7 @@ export async function GET(request) {
                         const lastDotIndex = fullPath.lastIndexOf('.');
                         publicId = lastDotIndex !== -1 ? fullPath.substring(0, lastDotIndex) : fullPath;
                     }
-                    
+
                     console.log(`[Proxy] Extracted publicId: ${publicId}, resourceType: ${resourceType}`);
                 }
             } catch (parseError) {
@@ -132,7 +132,7 @@ export async function GET(request) {
 
                 // Try unblocking with detected resource type
                 let unblocked = await unblockAsset(resourceType);
-                
+
                 // If failed and resource type is 'image', also try 'raw' (files are uploaded as raw)
                 if (!unblocked && resourceType === 'image') {
                     console.log(`[Proxy] Trying 'raw' resource type as fallback...`);
@@ -141,7 +141,7 @@ export async function GET(request) {
                         resourceType = 'raw'; // Update resource type for URL generation
                     }
                 }
-                
+
                 if (!unblocked) {
                     console.warn(`[Proxy] Could not unblock asset, but continuing with signed URL generation...`);
                 }
@@ -157,6 +157,13 @@ export async function GET(request) {
                 });
 
                 console.log(`[Proxy] Redirecting to signed CDN URL: ${signedUrl.substring(0, 100)}...`);
+
+                // --- NEW: Streaming Fallback ---
+                // If the signed URL still results in ERR_INVALID_RESPONSE for some users, 
+                // we can attempt to fetch it on the server and stream it.
+                // However, for now, let's just use the signed URL as it's the most efficient.
+                // If we want to force streaming, we could do a fetch(signedUrl) here.
+
                 return NextResponse.redirect(signedUrl);
             } catch (cloudinaryError) {
                 console.error('Cloudinary processing error:', cloudinaryError);
@@ -166,12 +173,27 @@ export async function GET(request) {
             }
         }
 
-        // For non-Cloudinary URLs, redirect directly
-        return NextResponse.redirect(fileUrl);
+        // For non-Cloudinary URLs or as a LAST RESORT fallback, let's try to stream
+        // to avoid "Site can't be reached" for blocked assets.
+        console.log(`[Proxy] Attempting server-side stream for: ${fileUrl.substring(0, 50)}...`);
+        try {
+            const response = await fetch(fileUrl);
+            if (!response.ok) throw new Error(`Fetch failed: ${response.statusText}`);
+
+            const blob = await response.blob();
+            const headers = new Headers();
+            headers.set('Content-Type', response.headers.get('Content-Type') || 'application/octet-stream');
+            headers.set('Content-Disposition', `attachment; filename="${filename}"`);
+
+            return new NextResponse(blob, { headers });
+        } catch (streamError) {
+            console.error('[Proxy] Streaming fallback failed:', streamError.message);
+            return NextResponse.redirect(fileUrl); // Hard fallback
+        }
 
     } catch (error) {
         console.error('Download Proxy Error:', error);
-        return NextResponse.json({ 
+        return NextResponse.json({
             error: 'Download failed',
             message: error.message || 'An unexpected error occurred',
             details: process.env.NODE_ENV === 'development' ? error.stack : undefined
