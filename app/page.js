@@ -161,10 +161,11 @@ const UploadModal = ({ show, onClose, form, setForm, onSubmit, uploading }) => {
           </div>
 
           <div className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer">
-            <input type="file" accept=".pdf,.docx" onChange={(e) => setForm({ ...form, file: e.target.files[0] })} className="hidden" id="file-upload" />
+            <input type="file" accept=".pdf,.docx" onChange={handleFileChange} className="hidden" id="file-upload" />
             <label htmlFor="file-upload" className="cursor-pointer">
               <Upload className="mx-auto text-blue-600 mb-3" size={48} />
               <p className="text-base text-gray-700 font-semibold mb-1">{form.file ? form.file.name : 'Click to upload'}</p>
+              <p className="text-[10px] text-orange-600 mt-2 font-medium">⚠️ Max 10MB (Cloudinary limit). Large files may have download issues.</p>
             </label>
           </div>
 
@@ -510,23 +511,34 @@ export default function SaveethaBase() {
 
   const handleActualDownload = () => {
     let filename = selectedFile.title || 'download';
-    // Ensure extension exists
     if (selectedFile.file_type && !filename.endsWith(`.${selectedFile.file_type}`)) {
       filename += `.${selectedFile.file_type}`;
     }
 
-    // Construct the proxy URL
-    const proxyUrl = `/api/download?url=${encodeURIComponent(selectedFile.file_url)}&filename=${encodeURIComponent(filename)}`;
+    // Cloudinary direct link if file is likely over Vercel's 4.5MB limit
+    const isLargeFile = true; // Since we don't have size on the object, we assume large if it's Cloudinary
 
-    const link = document.createElement('a');
-    link.href = proxyUrl;
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (isLargeFile) {
+      showToast('Downloading directly from storage (bypass server limit)');
+      const link = document.createElement('a');
+      link.href = selectedFile.file_url;
+      link.setAttribute('download', filename);
+      link.setAttribute('target', '_blank');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      const proxyUrl = `/api/download?url=${encodeURIComponent(selectedFile.file_url)}&filename=${encodeURIComponent(filename)}`;
+      const link = document.createElement('a');
+      link.href = proxyUrl;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
 
     showToast('Download started successfully!');
-    setShowAdWall(false); // Close AdWall
+    setShowAdWall(false);
   };
 
 
@@ -585,7 +597,7 @@ export default function SaveethaBase() {
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      showToast('File size must be less than 10MB!', 'error');
+      showToast('File size must be less than 10MB for Cloudinary!', 'error');
       return;
     }
     setUploadForm({ ...uploadForm, file });
