@@ -652,45 +652,17 @@ export default function SaveethaBase() {
 
     setUploading(true);
     try {
-      // 1. Get Cloud Configuration from backend
-      const configRes = await fetch('/api/upload/sign', { method: 'POST' });
-      const configData = await configRes.json();
-      if (!configRes.ok) throw new Error(configData.error || 'Failed to get upload configuration');
-
-      // 2. Upload to Cloudinary (Unsigned)
+      // 1. Upload to our SERVER-SIDE API (bypasses all client-side Cloudinary blocks)
       const formData = new FormData();
       formData.append('file', uploadForm.file);
-      formData.append('upload_preset', 'saveethabase');
-      formData.append('resource_type', 'auto'); // Let Cloudinary decide accurately
 
-      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${configData.cloudName}/upload`, {
+      const uploadRes = await fetch('/api/upload', {
         method: 'POST',
         body: formData
       });
       const uploadData = await uploadRes.json();
 
-      if (!uploadRes.ok) throw new Error(uploadData.error?.message || 'Cloudinary upload failed');
-
-      // 2.5. Unblock the asset immediately after upload
-      console.log(`[Upload] Asset uploaded as ${uploadData.resource_type}. Attempting unblock for ${uploadData.public_id}...`);
-      try {
-        const unblockRes = await fetch('/api/files/unblock', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            publicId: uploadData.public_id,
-            resourceType: uploadData.resource_type
-          })
-        });
-        const unblockData = await unblockRes.json();
-        if (unblockRes.ok) {
-          console.log('✅ Asset unblocked successfully after upload');
-        } else {
-          console.warn('⚠️ Unblock API returned error:', unblockData.error);
-        }
-      } catch (unblockError) {
-        console.warn('❌ Failed to call unblock API:', unblockError.message);
-      }
+      if (!uploadRes.ok) throw new Error(uploadData.error || 'Upload failed');
 
       // 2. Save Metadata to Supabase (using snake_case for DB)
       const fileData = {
