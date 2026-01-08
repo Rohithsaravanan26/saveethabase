@@ -19,6 +19,8 @@ export async function POST(request) {
                     resource_type: 'raw',
                     folder: 'saveethabase',
                     use_filename: true,
+                    access_mode: 'public', // Ensure files are publicly accessible
+                    access_control: [], // No access restrictions
                 },
                 (error, result) => {
                     if (error) reject(error)
