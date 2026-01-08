@@ -517,22 +517,20 @@ export default function SaveethaBase() {
       filename += `.${selectedFile.file_type}`;
     }
 
-    showToast('Download started - opening in new tab');
+    showToast('Starting download...');
 
-    // Direct link to storage - HIGH COMPATIBILITY method
-    // We avoid fl_attachment because it can cause ERR_INVALID_RESPONSE for some PDFs
-    // We bypass the proxy for Cloudinary files to avoid Vercel's 4.5MB limit
-    const downloadUrl = selectedFile.file_url;
+    // Primary: Use proxy for better browser support and forced naming
+    const proxyUrl = `/api/download?url=${encodeURIComponent(selectedFile.file_url)}&filename=${encodeURIComponent(filename)}`;
 
     const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.setAttribute('download', filename); // Browser may ignore for cross-origin
-    link.setAttribute('target', '_blank'); // Opens in new tab as fallback
+    link.href = proxyUrl;
+    link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    setShowAdWall(false);
+    // Keep modal open briefly to ensure link triggers
+    setTimeout(() => setShowAdWall(false), 2000);
   };
 
 

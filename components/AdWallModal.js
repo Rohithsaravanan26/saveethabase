@@ -61,6 +61,20 @@ const AdWallModal = ({ file, onClose, onDownload }) => {
                         {timeLeft > 0 ? `Wait ${timeLeft}s` : 'Download Now'}
                         {timeLeft === 0 && <Download size={24} />}
                     </button>
+
+                    {timeLeft === 0 && (
+                        <div className="mt-4 text-xs text-slate-400">
+                            Problem with the link?
+                            <a
+                                href={file.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="ml-1 text-indigo-600 hover:underline font-medium"
+                            >
+                                Try Mirror Link (Direct)
+                            </a>
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer Ad Slot (Horizontal) */}
