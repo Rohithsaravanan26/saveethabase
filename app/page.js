@@ -603,17 +603,26 @@ export default function SaveethaBase() {
 
     setUploading(true);
     try {
-      // 1. Upload to Cloudinary
+      // 1. Get Signature from backend
+      const signRes = await fetch('/api/upload/sign', { method: 'POST' });
+      const signData = await signRes.json();
+      if (!signRes.ok) throw new Error(signData.error || 'Failed to get upload signature');
+
+      // 2. Upload to Cloudinary Directly from browser
       const formData = new FormData();
       formData.append('file', uploadForm.file);
+      formData.append('api_key', signData.apiKey);
+      formData.append('timestamp', signData.timestamp);
+      formData.append('signature', signData.signature);
+      formData.append('folder', 'saveethabase');
 
-      const uploadRes = await fetch('/api/upload', {
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/auto/upload`, {
         method: 'POST',
         body: formData
       });
       const uploadData = await uploadRes.json();
 
-      if (!uploadRes.ok) throw new Error(uploadData.error || 'Upload failed');
+      if (!uploadRes.ok) throw new Error(uploadData.error?.message || 'Cloudinary upload failed');
 
       // 2. Save Metadata to Supabase (using snake_case for DB)
       const fileData = {
