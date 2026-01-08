@@ -509,7 +509,7 @@ export default function SaveethaBase() {
     setShowAdWall(true); // Trigger AdWall instead of old modal
   };
 
-  const handleActualDownload = () => {
+  const handleActualDownload = async () => {
     if (!selectedFile || !selectedFile.file_url) return;
 
     let filename = selectedFile.title || 'download';
@@ -517,20 +517,40 @@ export default function SaveethaBase() {
       filename += `.${selectedFile.file_type}`;
     }
 
-    showToast('Starting download...');
+    showToast('Starting high-speed download...');
 
-    // Primary: Use proxy for better browser support and forced naming
-    const proxyUrl = `/api/download?url=${encodeURIComponent(selectedFile.file_url)}&filename=${encodeURIComponent(filename)}`;
+    try {
+      // THE REAL SOLUTION: Fetch as Blob to bypass browser preview engines and Vercel limits
+      const response = await fetch(selectedFile.file_url);
 
-    const link = document.createElement('a');
-    link.href = proxyUrl;
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      if (!response.ok) {
+        // Fallback to proxy if direct fetch fails (CORS)
+        window.location.href = `/api/download?url=${encodeURIComponent(selectedFile.file_url)}&filename=${encodeURIComponent(filename)}`;
+        return;
+      }
 
-    // Keep modal open briefly to ensure link triggers
-    setTimeout(() => setShowAdWall(false), 2000);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      showToast('Download complete!');
+      setTimeout(() => setShowAdWall(false), 1500);
+
+    } catch (error) {
+      console.warn('Direct fetch failed, using proxy fallback:', error);
+      // Final fallback to the proxy
+      window.location.href = `/api/download?url=${encodeURIComponent(selectedFile.file_url)}&filename=${encodeURIComponent(filename)}`;
+      setTimeout(() => setShowAdWall(false), 2000);
+    }
   };
 
 
