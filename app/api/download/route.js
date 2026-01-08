@@ -12,65 +12,62 @@ export async function GET(request) {
     }
 
     try {
-        // Clean inputs
         fileUrl = fileUrl.trim();
         filename = filename.trim().replace(/[/\\?%*:|"<>]/g, '-');
 
-        // Extract public ID from the Cloudinary URL
-        // Example: https://res.cloudinary.com/cloudname/image/upload/v1234/folder/publicid.pdf
+        // THE ULTIMATE FIX FOR 404:
+        // Detection logic must match how Cloudinary stores the file.
         let publicId = '';
+        let resourceType = 'image'; // Default for PDFs in Cloudinary
+
         if (fileUrl.includes('cloudinary.com')) {
             const parts = fileUrl.split('/');
+
+            // 1. Detect Resource Type
+            if (parts.includes('raw')) resourceType = 'raw';
+            else if (parts.includes('video')) resourceType = 'video';
+            else resourceType = 'image';
+
+            // 2. Extract Public ID
             const uploadIndex = parts.indexOf('upload');
             if (uploadIndex !== -1) {
                 let startIndex = uploadIndex + 1;
-                // Skip version string if present
+                // Skip versioning v123456789
                 if (parts[startIndex] && parts[startIndex].startsWith('v') && !isNaN(parts[startIndex].substring(1))) {
                     startIndex++;
                 }
                 const pathParts = parts.slice(startIndex);
-                // Remove file extension from the last part to get the public ID
-                publicId = pathParts.join('/').replace(/\.[^/.]+$/, "");
+                // For 'raw' files, we keep the extension in publicId. 
+                // For 'image' (PDFs/Images), we strip it.
+                if (resourceType === 'raw') {
+                    publicId = pathParts.join('/');
+                } else {
+                    publicId = pathParts.join('/').replace(/\.[^/.]+$/, "");
+                }
             }
         }
 
         if (publicId) {
-            console.log(`[Proxy] Generating Signed Redirect for: ${publicId}`);
+            console.log(`[Proxy] Redirecting to Signed ${resourceType}: ${publicId}`);
 
-            // THE ULTIMATE SOLUTION: Generate a signed URL that bypasses all proxy limits and 401s
+            // Simplified signing to avoid 404/Signature Mismatch
             const signedUrl = cloudinary.url(publicId, {
-                resource_type: 'raw', // Use 'raw' for PDFs and Docs to be safe
+                resource_type: resourceType,
                 sign_url: true,
+                secure: true,
                 flags: 'attachment',
-                attachment: filename,
-                secure: true
+                attachment: filename
             });
 
             return NextResponse.redirect(signedUrl);
         }
 
-        // Fallback: Standard fetch if for some reason we couldn't parse the public ID
-        const response = await fetch(fileUrl, {
-            redirect: 'follow',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Cloudinary responded with ${response.status}`);
-        }
-
-        const newHeaders = new Headers();
-        const encodedFilename = encodeURIComponent(filename).replace(/['()'*]/g, escape);
-        newHeaders.set('Content-Disposition', `attachment; filename="${filename.replace(/"/g, '')}"; filename*=UTF-8''${encodedFilename}`);
-        newHeaders.set('Content-Type', 'application/octet-stream');
-        newHeaders.set('Cache-Control', 'no-cache');
-
-        return new NextResponse(response.body, {
-            status: 200,
-            headers: newHeaders,
-        });
+        // Final Fallback
+        const response = await fetch(fileUrl);
+        const headers = new Headers();
+        headers.set('Content-Disposition', `attachment; filename="${filename}"`);
+        headers.set('Content-Type', 'application/octet-stream');
+        return new NextResponse(response.body, { headers });
 
     } catch (error) {
         console.error('Download Proxy Error:', error);
