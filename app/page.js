@@ -294,7 +294,7 @@ const RequestModal = ({ show, onClose, form, setForm, onSubmit }) => {
       </div>
     </div>
   );
-  );
+
 };
 
 const MobileFiltersModal = ({ show, onClose, filters, setFilters, categories, departments, years }) => {
