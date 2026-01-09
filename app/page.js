@@ -604,7 +604,7 @@ export default function SaveethaBase() {
       return;
     }
     setSelectedFile(file);
-    setShowAdWall(true); // Trigger AdWall instead of old modal
+    setShowAdWall(true); // Trigger premium AdWall
   };
 
   const handleActualDownload = async () => {
@@ -845,6 +845,20 @@ export default function SaveethaBase() {
         departments={departments}
         years={years}
       />
+
+      {/* AdWall Interstitial */}
+      <AdWallModal
+        show={showAdWall}
+        onClose={() => setShowAdWall(false)}
+        file={selectedFile}
+        onDownloadReady={() => {
+          // Redirect or trigger actual download
+          if (selectedFile?.download_url) {
+            window.open(selectedFile.download_url, '_blank');
+          }
+        }}
+      />
+
       {showNotifications && (
         <NotificationCenter
           notifications={notifications}
@@ -1017,12 +1031,8 @@ export default function SaveethaBase() {
             </div>
 
             {/* AdSense Unit - Sidebar */}
-            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-3xl shadow-md border border-slate-200/60">
-              <div className="text-xs text-slate-400 text-center mb-2 font-medium">Advertisement</div>
-              <AdSenseUnit
-                slot="YOUR_SIDEBAR_AD_SLOT"
-                style={{ minHeight: '250px', display: 'block' }}
-              />
+            <div className="hidden lg:block bg-white/40 backdrop-blur-sm p-4 rounded-3xl shadow-sm border border-slate-200/50 sticky top-24">
+              <AdUnit variant="sidebar" slotId="YOUR_SIDEBAR_SLOT_ID" />
             </div>
           </div>
 
@@ -1110,55 +1120,23 @@ export default function SaveethaBase() {
                   </div>
                 )}
 
-                {files.map((file, index) => (
-                  <React.Fragment key={file.id}>
-                    <div className="bg-white p-4 md:p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-                      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                        <div className="flex gap-4 w-full">
-                          <div className="bg-blue-50 p-3 md:p-4 rounded-2xl h-fit group-hover:bg-blue-600 transition-colors duration-300 shrink-0">
-                            <FileText className="text-blue-600 group-hover:text-white transition-colors" size={24} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-lg md:text-xl font-bold text-slate-800 mb-1.5 group-hover:text-blue-600 transition-colors truncate pr-2">{file.title}</h3>
-                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs md:text-sm text-slate-500 mb-3 items-center">
-                              <span className="font-semibold text-slate-700">{file.subject_name}</span>
-                              <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                              <span className="font-mono text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md">{file.subject_code}</span>
-                              <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                              <span>{new Date(file.upload_date).toLocaleDateString()}</span>
-                            </div>
-                            <div className="flex gap-2 mb-2 md:mb-0">
-                              <span className="px-2 md:px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-wider">{file.category}</span>
-                              <span className="px-2 md:px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-wider">{file.department}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-row md:flex-col gap-2 w-full md:w-auto mt-2 md:mt-0">
-                          <button onClick={() => handleDownloadClick(file)} className="flex-1 md:flex-none px-4 md:px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-600 transition-all hover:shadow-lg shadow-blue-500/20 md:w-32">
-                            <Download size={16} /> <span className="md:inline">Download</span>
-                          </button>
-                          <button onClick={() => { setSelectedFile(file); setShowReviewsModal(true); }} className="flex-1 md:flex-none px-4 md:px-5 py-2.5 bg-white border-2 border-slate-100 text-slate-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:border-indigo-200 hover:text-indigo-600 hover:bg-indigo-50 transition-all md:w-32">
-                            <MessageSquare size={16} /> <span className="hidden sm:inline">Reviews</span>
-                          </button>
-                          <button onClick={() => handleLike(file.id)} className={`flex-1 md:flex-none px-4 md:px-5 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all md:w-32 ${file.likes > 0 ? 'bg-red-50 text-red-500 border border-red-100' : 'bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-500'}`}>
-                            <Heart size={16} className={file.likes > 0 ? "fill-red-500" : ""} /> {file.likes || 0}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* In-Feed Ad - Every 4th Resource */}
-                    {(index + 1) % 4 === 0 && index !== files.length - 1 && (
-                      <div className="bg-white/60 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/60">
-                        <div className="text-xs text-slate-400 text-center mb-2 font-medium">Advertisement</div>
-                        <AdSenseUnit
-                          slot="YOUR_INFEED_AD_SLOT"
-                          style={{ display: 'block', minHeight: '250px' }}
-                        />
-                      </div>
-                    )}
-                  </React.Fragment>
-                ))}
+                {/* File List with In-Feed Ads */}
+                <div className="space-y-4">
+                  {files.map((file, index) => (
+                    <React.Fragment key={file.id}>
+                      <FileCard
+                        file={file}
+                        user={user}
+                        onDownload={handleDownloadClick}
+                        onLike={handleUpvote} // Mapping handleUpvote to onLike prop as per FileCard definition
+                      />
+                      {/* Inject Ad every 5 items */}
+                      {(index + 1) % 5 === 0 && (
+                        <AdUnit variant="native" slotId="YOUR_NATIVE_AD_SLOT_ID" />
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
