@@ -1,6 +1,10 @@
 import './globals.css'
 import './mobile.css'
 import Script from 'next/script'
+import { Outfit, Inter } from 'next/font/google'
+
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-heading' })
+const inter = Inter({ subsets: ['latin'], variable: '--font-body' })
 
 export const metadata = {
   title: 'SaveethaBase - Academic Resource Platform',
@@ -15,7 +19,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${outfit.variable} ${inter.variable}`}>
       <head>
         {process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID && (
           <script

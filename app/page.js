@@ -363,6 +363,7 @@ const MobileFiltersModal = ({ show, onClose, filters, setFilters, categories, de
 
 export default function SaveethaBase() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('resources');
 
   // Data States
@@ -375,6 +376,7 @@ export default function SaveethaBase() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // Interaction States
   // Interaction States
@@ -560,6 +562,14 @@ export default function SaveethaBase() {
     } catch (error) {
       console.error('Error fetching requests:', error);
     }
+  };
+
+  const markNotificationAsRead = (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
   };
 
   // --- Effects ---
@@ -835,13 +845,14 @@ export default function SaveethaBase() {
         departments={departments}
         years={years}
       />
-      <NotificationCenter
-        notifications={notifications}
-        onClose={() => setShowNotifications(false)}
-        onMarkAsRead={markNotificationAsRead}
-        onClearAll={clearAllNotifications}
-        show={showNotifications}
-      />
+      {showNotifications && (
+        <NotificationCenter
+          notifications={notifications}
+          onClose={() => setShowNotifications(false)}
+          onMarkAsRead={markNotificationAsRead}
+          onClearAll={clearAllNotifications}
+        />
+      )}
       {toast && (
         <div className={`fixed top-6 right-6 z-50 px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 animate-slide-in ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
           } text-white`}>
