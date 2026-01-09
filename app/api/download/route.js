@@ -30,15 +30,25 @@ export async function GET(request) {
             const { publicId, resourceType } = extractPublicIdFromUrl(fileUrl)
 
             if (publicId) {
-                console.log(`[Download] Extracted public ID: ${publicId} (type: ${resourceType})`)
+                console.log(`[Download] Extracted public ID: ${publicId} (detected type: ${resourceType})`)
 
                 try {
-                    // Generate signed download URL with attachment flag
+                    // Try the detected resource type first
                     downloadUrl = generateDownloadUrl(publicId, filename, resourceType)
-                    console.log(`[Download] Generated signed download URL`)
+                    console.log(`[Download] Generated signed download URL with type: ${resourceType}`)
                 } catch (urlError) {
-                    console.warn(`[Download] Failed to generate signed URL, using original:`, urlError.message)
-                    // Fall back to original URL
+                    console.warn(`[Download] Failed with ${resourceType}, trying alternate type...`)
+
+                    // FALLBACK: Try alternate resource type
+                    // PDFs might be stored as 'image' in old uploads but should be 'raw'
+                    try {
+                        const alternateType = resourceType === 'raw' ? 'image' : 'raw'
+                        downloadUrl = generateDownloadUrl(publicId, filename, alternateType)
+                        console.log(`[Download] Generated signed download URL with alternate type: ${alternateType}`)
+                    } catch (fallbackError) {
+                        console.warn(`[Download] Both resource types failed, using original URL`)
+                        // Keep original fileUrl as last resort
+                    }
                 }
             } else {
                 console.warn(`[Download] Could not extract public ID from URL, using direct fetch`)
@@ -48,39 +58,52 @@ export async function GET(request) {
         // Fetch the file from Cloudinary (or direct URL)
         console.log(`[Download] Fetching file from URL`)
 
-        const fetchOptions = {
-            method: 'GET',
-            headers: {
-                'User-Agent': 'SaveethaBase-Download-Proxy/1.0'
-            }
-        }
-
         let response
         let lastError
 
-        // Try up to 3 times with exponential backoff
-        for (let attempt = 1; attempt <= 3; attempt++) {
-            try {
-                response = await fetch(downloadUrl, fetchOptions)
+        // Build multiple download URL attempts
+        const urlsToTry = [downloadUrl]
 
-                if (response.ok) {
-                    break // Success!
+        // If we have a publicId, also try the original file URL as fallback
+        if (fileUrl !== downloadUrl && fileUrl.includes('cloudinary.com')) {
+            urlsToTry.push(fileUrl)
+        }
+
+        console.log(`[Download] Will try ${urlsToTry.length} URL variation(s)`)
+
+        // Try each URL with retries
+        for (const url of urlsToTry) {
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'User-Agent': 'SaveethaBase-Download-Proxy/1.0'
+                        }
+                    })
+
+                    if (response.ok) {
+                        console.log(`[Download] Success with URL variation ${urlsToTry.indexOf(url) + 1}, attempt ${attempt}`)
+                        break // Found working URL!
+                    }
+
+                    lastError = `HTTP ${response.status}: ${response.statusText}`
+                    console.warn(`[Download] URL ${urlsToTry.indexOf(url) + 1}, attempt ${attempt} failed: ${lastError}`)
+
+                } catch (fetchError) {
+                    lastError = fetchError.message
+                    console.warn(`[Download] URL ${urlsToTry.indexOf(url) + 1}, attempt ${attempt} error:`, lastError)
                 }
 
-                lastError = `HTTP ${response.status}: ${response.statusText}`
-                console.warn(`[Download] Attempt ${attempt} failed: ${lastError}`)
-
-                // Wait before retry (exponential backoff)
-                if (attempt < 3) {
-                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 500))
+                // Small delay before retry
+                if (attempt < 2) {
+                    await new Promise(resolve => setTimeout(resolve, 500))
                 }
-            } catch (fetchError) {
-                lastError = fetchError.message
-                console.warn(`[Download] Attempt ${attempt} error:`, lastError)
+            }
 
-                if (attempt < 3) {
-                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 500))
-                }
+            // If we got a successful response, stop trying other URLs
+            if (response && response.ok) {
+                break
             }
         }
 

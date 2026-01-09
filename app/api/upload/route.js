@@ -26,7 +26,8 @@ export async function POST(request) {
         const result = await new Promise((resolve, reject) => {
             cloudinary.uploader.upload_stream(
                 {
-                    resource_type: 'auto',
+                    // CRITICAL: Use 'raw' for PDFs/DOCX to prevent "image" classification
+                    resource_type: 'raw',
                     folder: 'saveethabase',
                     use_filename: true,
                     unique_filename: true,
