@@ -1,9 +1,16 @@
 import './globals.css'
+import './mobile.css'
 import Script from 'next/script'
 
 export const metadata = {
   title: 'SaveethaBase - Academic Resource Platform',
   description: 'Access CIA papers, study materials, lab records, and more',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
+  },
+  themeColor: '#3b82f6',
 }
 
 export default function RootLayout({ children }) {

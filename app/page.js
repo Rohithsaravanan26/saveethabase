@@ -832,40 +832,42 @@ export default function SaveethaBase() {
             </p>
           </div>
 
+
           {/* Stats Bar */}
-          <div className="grid grid-cols-3 gap-4 max-w-3xl mx-auto mb-8">
-            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/60 text-center hover:shadow-lg transition-all card-hover">
-              <div className="text-3xl font-bold text-gradient">{files.length}</div>
-              <div className="text-sm text-slate-600 font-medium">Resources</div>
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto mb-8">
+            <div className="bg-white/80 backdrop-blur-sm p-3 sm:p-4 rounded-2xl border border-slate-200/60 text-center hover:shadow-lg transition-all card-hover">
+              <div className="text-2xl sm:text-3xl font-bold text-gradient">{files.length}</div>
+              <div className="text-xs sm:text-sm text-slate-600 font-medium">Resources</div>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/60 text-center hover:shadow-lg transition-all card-hover">
-              <div className="text-3xl font-bold text-gradient-blue">{requests.length}</div>
-              <div className="text-sm text-slate-600 font-medium">Active Requests</div>
+            <div className="bg-white/80 backdrop-blur-sm p-3 sm:p-4 rounded-2xl border border-slate-200/60 text-center hover:shadow-lg transition-all card-hover">
+              <div className="text-2xl sm:text-3xl font-bold text-gradient-blue">{requests.length}</div>
+              <div className="text-xs sm:text-sm text-slate-600 font-medium">Active Requests</div>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/60 text-center hover:shadow-lg transition-all card-hover">
-              <div className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{user?.uploads_count || 0}</div>
-              <div className="text-sm text-slate-600 font-medium">Your Uploads</div>
+            <div className="bg-white/80 backdrop-blur-sm p-3 sm:p-4 rounded-2xl border border-slate-200/60 text-center hover:shadow-lg transition-all card-hover">
+              <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{user?.uploads_count || 0}</div>
+              <div className="text-xs sm:text-sm text-slate-600 font-medium">Your Uploads</div>
             </div>
           </div>
 
           {/* Search and Action Bar */}
-          <div className="flex gap-4 max-w-4xl mx-auto">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 max-w-4xl mx-auto">
             <div className="relative flex-1 group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors z-10" size={22} />
+              <Search className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors z-10" size={20} />
               <input
                 type="text"
-                placeholder="Search for subjects, codes, topics, or materials..."
-                className="w-full pl-14 pr-6 py-5 bg-white/90 backdrop-blur-sm border-2 border-slate-200 rounded-2xl shadow-md focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all text-lg font-medium placeholder:text-slate-400"
+                placeholder="Search subjects, codes, topics..."
+                className="w-full pl-12 sm:pl-14 pr-4 sm:pr-6 py-4 sm:py-5 bg-white/90 backdrop-blur-sm border-2 border-slate-200 rounded-2xl shadow-md focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all text-base sm:text-lg font-medium placeholder:text-slate-400"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
             <button
               onClick={() => setShowUploadModal(true)}
-              className="btn-gradient text-white px-10 py-5 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center gap-3 whitespace-nowrap"
+              className="btn-gradient text-white px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 sm:gap-3 whitespace-nowrap"
             >
-              <Upload size={22} />
-              Upload Resource
+              <Upload size={20} />
+              <span className="hidden sm:inline">Upload Resource</span>
+              <span className="sm:hidden">Upload</span>
             </button>
           </div>
         </div>
