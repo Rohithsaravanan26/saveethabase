@@ -784,17 +784,19 @@ export default function SaveethaBase() {
               <p className="text-xs text-slate-500 font-medium">Academic Excellence Hub</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            {user && (
-              <button onClick={() => setShowNotifications(true)} className="relative p-3 hover:bg-white/50 rounded-xl transition-all hover:scale-110 active:scale-95 group">
-                <Bell size={22} className="text-slate-700 group-hover:text-blue-600 transition-colors" />
-                {notifications.filter(n => !n.read).length > 0 && (
-                  <div className="absolute top-2 right-2 w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 rounded-full border-2 border-white flex items-center justify-center">
-                    <span className="text-[10px] font-bold text-white">{notifications.filter(n => !n.read).length}</span>
-                  </div>
-                )}
-              </button>
-            )}
+          {/* Right Actions - Hidden on mobile, shown on desktop */}
+          <div className="hidden md:flex items-center gap-4">
+            <button
+              className="p-2 rounded-full hover:bg-slate-100 transition-colors relative group"
+              onClick={() => setShowNotifications(!showNotifications)}
+            >
+              <Bell size={22} className="text-slate-700 group-hover:text-blue-600 transition-colors" />
+              {notifications.filter(n => !n.read).length > 0 && (
+                <div className="absolute top-2 right-2 w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 rounded-full border-2 border-white flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-white">{notifications.filter(n => !n.read).length}</span>
+                </div>
+              )}
+            </button>
             {user ? (
               <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-3 pl-2 pr-5 py-2 bg-white/80 border border-slate-200/60 rounded-full hover:shadow-lg transition-all hover:scale-105 active:scale-95 group">
                 <div className="relative">
@@ -863,11 +865,10 @@ export default function SaveethaBase() {
             </div>
             <button
               onClick={() => setShowUploadModal(true)}
-              className="btn-gradient text-white px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 sm:gap-3 whitespace-nowrap"
+              className="hidden md:flex btn-gradient text-white px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all items-center justify-center gap-2 sm:gap-3 whitespace-nowrap"
             >
               <Upload size={20} />
-              <span className="hidden sm:inline">Upload Resource</span>
-              <span className="sm:hidden">Upload</span>
+              <span>Upload Resource</span>
             </button>
           </div>
         </div>
@@ -1142,7 +1143,7 @@ export default function SaveethaBase() {
         </div>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-slate-200 mt-12 py-8">
+        <footer className="bg-white border-t border-slate-200 mt-12 py-8 mb-16 md:mb-0">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-600 mb-4">
               <a href="/about" className="hover:text-blue-600 transition">About</a>
@@ -1155,6 +1156,74 @@ export default function SaveethaBase() {
             </div>
           </div>
         </footer>
+
+        {/* Mobile Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2 z-50 md:hidden flex justify-around items-center pb-safe box-content h-14">
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="flex flex-col items-center justify-center w-16 h-full text-slate-600 hover:text-blue-600 active:scale-95 transition-transform"
+          >
+            <div className={`p-1 rounded-xl ${activeTab === 'resources' ? 'bg-blue-50 text-blue-600' : ''}`}>
+              <BookOpen size={24} />
+            </div>
+            <span className="text-[10px] font-medium mt-1">Home</span>
+          </button>
+
+          <button
+            onClick={() => {
+              const searchInput = document.querySelector('input[type="text"]');
+              if (searchInput) {
+                searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                searchInput.focus();
+              }
+            }}
+            className="flex flex-col items-center justify-center w-16 h-full text-slate-600 hover:text-blue-600 active:scale-95 transition-transform"
+          >
+            <div className="p-1 rounded-xl">
+              <Search size={24} />
+            </div>
+            <span className="text-[10px] font-medium mt-1">Search</span>
+          </button>
+
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="flex flex-col items-center justify-center w-16 -mt-8"
+          >
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-full text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-transform ring-4 ring-white">
+              <Plus size={28} />
+            </div>
+            <span className="text-[10px] font-medium mt-1 font-bold text-blue-600">Upload</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('requests')}
+            className="flex flex-col items-center justify-center w-16 h-full text-slate-600 hover:text-blue-600 active:scale-95 transition-transform"
+          >
+            <div className={`p-1 rounded-xl ${activeTab === 'requests' ? 'bg-blue-50 text-blue-600' : ''}`}>
+              <MessageSquare size={24} />
+            </div>
+            <span className="text-[10px] font-medium mt-1">Requests</span>
+          </button>
+
+          <button
+            onClick={() => user ? setShowProfileDropdown(!showProfileDropdown) : signInWithGoogle()}
+            className="flex flex-col items-center justify-center w-16 h-full text-slate-600 hover:text-blue-600 active:scale-95 transition-transform"
+          >
+            <div className="p-1 rounded-xl">
+              {user ? (
+                <div className="w-6 h-6 rounded-full overflow-hidden ring-1 ring-slate-200">
+                  <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.name}&background=667eea&color=fff`} className="w-full h-full object-cover" alt="Profile" />
+                </div>
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center">
+                  <LogOut size={16} />
+                </div>
+              )}
+            </div>
+            <span className="text-[10px] font-medium mt-1">Profile</span>
+          </button>
+        </div>
+
       </div>
     </div>
   );
