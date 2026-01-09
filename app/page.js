@@ -298,7 +298,6 @@ const RequestModal = ({ show, onClose, form, setForm, onSubmit }) => {
 
 export default function SaveethaBase() {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('resources');
 
   // Data States
@@ -753,15 +752,29 @@ export default function SaveethaBase() {
       } else {
         throw new Error('Failed to create request');
       }
-    } catch (error) {
       showToast('Failed to create request', 'error');
     }
   };
 
-  // Inline modals removed
-
+  // Inline  // --- Main Render ---
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className={`min-h-screen bg-slate-50 font-sans text-slate-900 ${showUploadModal ? 'blur-sm' : ''}`}>
+      <MobileFiltersModal
+        show={showMobileFilters}
+        onClose={() => setShowMobileFilters(false)}
+        filters={filters}
+        setFilters={setFilters}
+        categories={categories}
+        departments={departments}
+        years={years}
+      />
+      <NotificationCenter
+        notifications={notifications}
+        onClose={() => setShowNotifications(false)}
+        onMarkAsRead={markNotificationAsRead}
+        onClearAll={clearAllNotifications}
+        show={showNotifications}
+      />
       {toast && (
         <div className={`fixed top-6 right-6 z-50 px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 animate-slide-in ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
           } text-white`}>
@@ -862,6 +875,12 @@ export default function SaveethaBase() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
+              <button
+                onClick={() => setShowMobileFilters(true)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-slate-100 rounded-xl text-slate-500 hover:bg-blue-100 hover:text-blue-600 lg:hidden transition-colors"
+              >
+                <Filter size={20} />
+              </button>
             </div>
             <button
               onClick={() => setShowUploadModal(true)}
@@ -888,7 +907,7 @@ export default function SaveethaBase() {
 
         <div className="flex gap-8">
           {/* Sidebar Filters */}
-          <div className="w-72 flex-shrink-0 space-y-6 animate-slideIn">
+          <div className="hidden lg:block w-72 flex-shrink-0 space-y-6 animate-slideIn">
             <div className="bg-white/80 backdrop-blur-sm p-6 rounded-3xl shadow-md border border-slate-200/60">
               <h3 className="font-bold mb-5 flex items-center gap-2 text-slate-800 text-lg">
                 <Filter size={20} className="text-blue-600" />
@@ -1015,35 +1034,35 @@ export default function SaveethaBase() {
 
                 {files.map((file, index) => (
                   <React.Fragment key={file.id}>
-                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-                      <div className="flex justify-between items-start">
-                        <div className="flex gap-5">
-                          <div className="bg-blue-50 p-4 rounded-2xl h-fit group-hover:bg-blue-600 transition-colors duration-300">
-                            <FileText className="text-blue-600 group-hover:text-white transition-colors" size={28} />
+                    <div className="bg-white p-4 md:p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
+                      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                        <div className="flex gap-4 w-full">
+                          <div className="bg-blue-50 p-3 md:p-4 rounded-2xl h-fit group-hover:bg-blue-600 transition-colors duration-300 shrink-0">
+                            <FileText className="text-blue-600 group-hover:text-white transition-colors" size={24} />
                           </div>
-                          <div>
-                            <h3 className="text-xl font-bold text-slate-800 mb-1.5 group-hover:text-blue-600 transition-colors">{file.title}</h3>
-                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-500 mb-3 items-center">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg md:text-xl font-bold text-slate-800 mb-1.5 group-hover:text-blue-600 transition-colors truncate pr-2">{file.title}</h3>
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs md:text-sm text-slate-500 mb-3 items-center">
                               <span className="font-semibold text-slate-700">{file.subject_name}</span>
                               <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                               <span className="font-mono text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md">{file.subject_code}</span>
                               <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                               <span>{new Date(file.upload_date).toLocaleDateString()}</span>
                             </div>
-                            <div className="flex gap-2">
-                              <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase tracking-wider">{file.category}</span>
-                              <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase tracking-wider">{file.department}</span>
+                            <div className="flex gap-2 mb-2 md:mb-0">
+                              <span className="px-2 md:px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-wider">{file.category}</span>
+                              <span className="px-2 md:px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-wider">{file.department}</span>
                             </div>
                           </div>
                         </div>
-                        <div className="flex flex-col gap-2.5">
-                          <button onClick={() => handleDownloadClick(file)} className="px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-600 transition-all hover:shadow-lg shadow-blue-500/20 w-32">
-                            <Download size={16} /> Download
+                        <div className="flex flex-row md:flex-col gap-2 w-full md:w-auto mt-2 md:mt-0">
+                          <button onClick={() => handleDownloadClick(file)} className="flex-1 md:flex-none px-4 md:px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-600 transition-all hover:shadow-lg shadow-blue-500/20 md:w-32">
+                            <Download size={16} /> <span className="md:inline">Download</span>
                           </button>
-                          <button onClick={() => { setSelectedFile(file); setShowReviewsModal(true); }} className="px-5 py-2.5 bg-white border-2 border-slate-100 text-slate-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:border-indigo-200 hover:text-indigo-600 hover:bg-indigo-50 transition-all w-32">
-                            <MessageSquare size={16} /> Reviews
+                          <button onClick={() => { setSelectedFile(file); setShowReviewsModal(true); }} className="flex-1 md:flex-none px-4 md:px-5 py-2.5 bg-white border-2 border-slate-100 text-slate-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:border-indigo-200 hover:text-indigo-600 hover:bg-indigo-50 transition-all md:w-32">
+                            <MessageSquare size={16} /> <span className="hidden sm:inline">Reviews</span>
                           </button>
-                          <button onClick={() => handleLike(file.id)} className={`px-5 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all w-32 ${file.likes > 0 ? 'bg-red-50 text-red-500 border border-red-100' : 'bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-500'}`}>
+                          <button onClick={() => handleLike(file.id)} className={`flex-1 md:flex-none px-4 md:px-5 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all md:w-32 ${file.likes > 0 ? 'bg-red-50 text-red-500 border border-red-100' : 'bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-500'}`}>
                             <Heart size={16} className={file.likes > 0 ? "fill-red-500" : ""} /> {file.likes || 0}
                           </button>
                         </div>
@@ -1206,7 +1225,7 @@ export default function SaveethaBase() {
           </button>
 
           <button
-            onClick={() => user ? setShowProfileDropdown(!showProfileDropdown) : signInWithGoogle()}
+            onClick={() => user ? setShowProfileModal(true) : signInWithGoogle()}
             className="flex flex-col items-center justify-center w-16 h-full text-slate-600 hover:text-blue-600 active:scale-95 transition-transform"
           >
             <div className="p-1 rounded-xl">
