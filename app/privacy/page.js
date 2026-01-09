@@ -90,7 +90,7 @@ export default function PrivacyPolicy() {
                     <section>
                         <h2 className="text-2xl font-bold text-slate-800 mb-3">Contact Us</h2>
                         <p>For privacy-related questions or requests, contact us at:</p>
-                        <p className="mt-2"><strong>Email:</strong> privacy@saveethabase.app</p>
+                        <p className="mt-2"><strong>Email:</strong> codez.ai.contact@gmail.com</p>
                     </section>
 
                     <section>

@@ -54,7 +54,7 @@ export default function About() {
                     <section>
                         <h2 className="text-2xl font-bold text-slate-800 mb-3">Contact Us</h2>
                         <p>Have questions, suggestions, or feedback? We'd love to hear from you!</p>
-                        <p className="mt-2"><strong>Email:</strong> contact@saveethabase.app</p>
+                        <p className="mt-2"><strong>Email:</strong> codez.ai.contact@gmail.com</p>
                     </section>
 
                     <section className="bg-blue-50 p-6 rounded-xl mt-8">

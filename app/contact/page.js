@@ -35,15 +35,15 @@ export default function Contact() {
                             <div className="space-y-4">
                                 <div>
                                     <h3 className="font-semibold text-slate-700">Email</h3>
-                                    <p className="text-slate-600">contact@saveethabase.app</p>
+                                    <p className="text-slate-600">codez.ai.contact@gmail.com</p>
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-slate-700">Support</h3>
-                                    <p className="text-slate-600">support@saveethabase.app</p>
+                                    <p className="text-slate-600">codez.ai.contact@gmail.com</p>
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-slate-700">Business Inquiries</h3>
-                                    <p className="text-slate-600">business@saveethabase.app</p>
+                                    <p className="text-slate-600">codez.ai.contact@gmail.com</p>
                                 </div>
                             </div>
                         </div>

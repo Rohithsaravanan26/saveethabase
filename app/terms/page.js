@@ -56,7 +56,7 @@ export default function Terms() {
 
                     <section>
                         <h2 className="text-2xl font-bold text-slate-800 mb-3">Copyright and Intellectual Property</h2>
-                        <p>SaveethaBase respects intellectual property rights. If you believe your copyright has been infringed, please contact us immediately at copyright@saveethabase.app with:</p>
+                        <p>SaveethaBase respects intellectual property rights. If you believe your copyright has been infringed, please contact us immediately at codez.ai.contact@gmail.com with:</p>
                         <ul className="list-disc ml-6 space-y-2">
                             <li>Description of the copyrighted work</li>
                             <li>Location of the infringing material</li>
@@ -120,7 +120,7 @@ export default function Terms() {
                     <section>
                         <h2 className="text-2xl font-bold text-slate-800 mb-3">Contact</h2>
                         <p>For questions about these Terms of Service, please contact us at:</p>
-                        <p className="mt-2"><strong>Email:</strong> legal@saveethabase.app</p>
+                        <p className="mt-2"><strong>Email:</strong> codez.ai.contact@gmail.com</p>
                     </section>
                 </div>
             </div>
