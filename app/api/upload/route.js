@@ -1,6 +1,20 @@
 import { NextResponse } from 'next/server'
 import cloudinary, { verifyAssetExists, ensurePublicAccess, generateDownloadUrl } from '@/lib/cloudinary'
 
+// Configure route segment to handle larger file uploads
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '10mb'
+        }
+    }
+}
+
+// Alternative: Use Next.js 13+ route segment config
+export const runtime = 'nodejs'
+export const maxDuration = 60 // 60 seconds timeout
+export const dynamic = 'force-dynamic'
+
 export async function POST(request) {
     try {
         const formData = await request.formData()
