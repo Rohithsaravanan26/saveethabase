@@ -294,6 +294,71 @@ const RequestModal = ({ show, onClose, form, setForm, onSubmit }) => {
       </div>
     </div>
   );
+  );
+};
+
+const MobileFiltersModal = ({ show, onClose, filters, setFilters, categories, departments, years }) => {
+  if (!show) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4 animate-fadeIn">
+      <div className="bg-white w-full max-w-lg rounded-3xl rounded-b-none sm:rounded-3xl p-6 shadow-2xl animate-slideUp">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <Filter className="text-blue-600" /> Filters
+          </h3>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+            <X size={24} className="text-slate-500" />
+          </button>
+        </div>
+
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">Category</label>
+            <select
+              value={filters.category}
+              onChange={e => setFilters({ ...filters, category: e.target.value })}
+              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-slate-700 font-medium focus:border-blue-500 outline-none transition-all"
+            >
+              <option value="all">All Categories</option>
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">Department</label>
+            <select
+              value={filters.department}
+              onChange={e => setFilters({ ...filters, department: e.target.value })}
+              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-slate-700 font-medium focus:border-blue-500 outline-none transition-all"
+            >
+              <option value="all">All Departments</option>
+              {departments.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700">Year</label>
+            <select
+              value={filters.year}
+              onChange={e => setFilters({ ...filters, year: e.target.value })}
+              className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-slate-700 font-medium focus:border-blue-500 outline-none transition-all"
+            >
+              <option value="all">All Years</option>
+              {years.map(c => <option key={c} value={c}>Year {c}</option>)}
+            </select>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all mt-4"
+          >
+            Apply Filters
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default function SaveethaBase() {
