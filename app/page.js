@@ -1138,6 +1138,21 @@ export default function SaveethaBase() {
             />
           </div>
         </div>
+
+        {/* Footer */}
+        <footer className="bg-white border-t border-slate-200 mt-12 py-8">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-600 mb-4">
+              <a href="/about" className="hover:text-blue-600 transition">About</a>
+              <a href="/contact" className="hover:text-blue-600 transition">Contact</a>
+              <a href="/privacy" className="hover:text-blue-600 transition">Privacy Policy</a>
+              <a href="/terms" className="hover:text-blue-600 transition">Terms of Service</a>
+            </div>
+            <div className="text-center text-xs text-slate-500">
+              © 2026 SaveethaBase. All rights reserved.
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );
