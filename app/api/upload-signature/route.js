@@ -13,10 +13,10 @@ export async function POST(request) {
         const timestamp = Math.round(new Date().getTime() / 1000)
 
         // Upload parameters - FULL CONTROL!
+        // Note: resource_type is in the URL, not in signature params
         const uploadParams = {
             timestamp,
             folder: 'saveethabase',
-            resource_type: 'raw',
             type: 'upload', // Delivery type
             access_mode: 'public', // Force public!
             tags: 'saveethabase,user-upload',

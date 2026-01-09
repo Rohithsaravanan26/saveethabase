@@ -669,6 +669,29 @@ export default function SaveethaBase() {
 
       console.log('[Upload] Cloudinary upload successful:', uploadData.public_id);
 
+      // 1.5: CRITICAL - Force public access (workaround for blocked delivery)
+      console.log('[Upload] Forcing public access via Admin API...');
+      try {
+        const unblockRes = await fetch('/api/unblock-after-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            publicId: uploadData.public_id,
+            resourceType: uploadData.resource_type || 'raw'
+          })
+        });
+
+        if (unblockRes.ok) {
+          const unblockData = await unblockRes.json();
+          console.log('[Upload] File unblocked! Access mode:', unblockData.accessMode);
+        } else {
+          console.warn('[Upload] Unblock failed, but continuing...');
+        }
+      } catch (unblockError) {
+        console.warn('[Upload] Unblock error:', unblockError.message);
+        // Continue anyway - file might still work
+      }
+
       // 2. Save ONLY metadata to Supabase (tiny payload, no size limit!)
       const fileData = {
         title: uploadForm.title,
