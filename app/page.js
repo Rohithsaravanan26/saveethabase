@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Upload, Bell, Heart, Share2, FileText, BookOpen, ThumbsUp, Download, Filter, X, Plus, Loader2, CheckCircle, AlertCircle, LogOut, Trophy, Clock, Sparkles, MessageSquare, Award } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
+import { uploadToCloudinary } from '@/lib/cloudinary-upload';
 import NotificationCenter from '@/components/NotificationCenter';
 import ReviewsModal from '@/components/ReviewsModal';
 import AchievementModal from '@/components/AchievementModal';
@@ -297,6 +298,7 @@ export default function SaveethaBase() {
   const [statusMessage, setStatusMessage] = useState('');
   const [toast, setToast] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0); // NEW: Upload progress tracking
 
   // New Feature States
   const [showNotifications, setShowNotifications] = useState(false);
@@ -619,31 +621,33 @@ export default function SaveethaBase() {
     setUploadForm({ ...uploadForm, file });
   };
 
-  const handleUploadSubmit = async () => {
+  const handleUpload = async () => {
     if (!user) {
       showToast('Please sign in to upload', 'error');
       return;
     }
-    if (!uploadForm.file || !uploadForm.title || !uploadForm.subjectCode) {
+    if (!uploadForm.title || !uploadForm.subjectName || !uploadForm.file) {
       showToast('Please fill all required fields', 'error');
       return;
     }
 
     setUploading(true);
+    setUploadProgress(0); // Reset progress
+
     try {
-      // 1. Upload to our SERVER-SIDE API (bypasses all client-side Cloudinary blocks)
-      const formData = new FormData();
-      formData.append('file', uploadForm.file);
+      // 1. Upload DIRECTLY to Cloudinary (bypasses Vercel!)
+      console.log('[Upload] Starting direct upload to Cloudinary...');
 
-      const uploadRes = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
+      const uploadData = await uploadToCloudinary(uploadForm.file, {
+        onProgress: (progress) => {
+          setUploadProgress(progress);
+          console.log(`[Upload] Progress: ${progress}%`);
+        }
       });
-      const uploadData = await uploadRes.json();
 
-      if (!uploadRes.ok) throw new Error(uploadData.error || 'Upload failed');
+      console.log('[Upload] Cloudinary upload successful:', uploadData.public_id);
 
-      // 2. Save Metadata to Supabase (using snake_case for DB)
+      // 2. Save ONLY metadata to Supabase (tiny payload, no size limit!)
       const fileData = {
         title: uploadForm.title,
         subject_name: uploadForm.subjectName,
@@ -656,9 +660,11 @@ export default function SaveethaBase() {
         file_url: uploadData.secure_url,
         cloudinary_public_id: uploadData.public_id,
         file_type: uploadForm.file.name.split('.').pop(),
-        download_url: uploadData.download_url || uploadData.secure_url, // Use authenticated download URL
-        requestId: uploadForm.requestId // Pass requestId if it exists (for fulfillment)
+        download_url: uploadData.secure_url, // Simple public URL
+        requestId: uploadForm.requestId
       };
+
+      console.log('[Upload] Saving metadata to database...');
 
       const dbRes = await fetch('/api/files', {
         method: 'POST',
@@ -666,21 +672,31 @@ export default function SaveethaBase() {
         body: JSON.stringify(fileData)
       });
 
-      if (!dbRes.ok) throw new Error('Database save failed');
+      if (!dbRes.ok) {
+        const errorData = await dbRes.json();
+        throw new Error(errorData.error || 'Database save failed');
+      }
 
+      // Success!
       showToast('Resource published successfully! +50 points');
       setShowUploadModal(false);
       setUploadForm({
         title: '', subjectName: '', subjectCode: '', faculty: '',
         category: '', department: '', year: '', semester: '', file: null, requestId: null
       });
-      fetchFiles(); // Refresh list
-      fetchProfile(user.id); // Refresh points
-      fetchRequests(); // Refresh requests (to hide fulfilled ones)
+      setUploadProgress(0);
+
+      // Refresh data
+      fetchFiles();
+      fetchProfile(user.id);
+      fetchRequests();
+
     } catch (error) {
-      showToast(error.message, 'error');
+      console.error('[Upload] Error:', error);
+      showToast(error.message || 'Upload failed', 'error');
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
