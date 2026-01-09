@@ -102,7 +102,7 @@ const DownloadModal = ({ show, onClose, onDownload, processing, countdown, statu
   );
 };
 
-const UploadModal = ({ show, onClose, form, setForm, onSubmit, uploading, onFileChange }) => {
+const UploadModal = ({ show, onClose, form, setForm, onSubmit, uploading, uploadProgress = 0, onFileChange }) => {
   if (!show) return null;
   const categories = ['PYQ', 'CIA Paper', 'Study Material', 'Lab Record', 'Project File'];
   const departments = ['CSE', 'ECE', 'MECH', 'CIVIL', 'EEE', 'IT'];
@@ -166,18 +166,40 @@ const UploadModal = ({ show, onClose, form, setForm, onSubmit, uploading, onFile
             <label htmlFor="file-upload" className="cursor-pointer">
               <Upload className="mx-auto text-blue-600 mb-3" size={48} />
               <p className="text-base text-gray-700 font-semibold mb-1">{form.file ? form.file.name : 'Click to upload'}</p>
-              <p className="text-[10px] text-orange-600 mt-2 font-medium">⚠️ Max 10MB (Cloudinary limit). Large files may have download issues.</p>
+              <p className="text-xs text-gray-500 mt-2">Supports PDF and DOCX files (Max 10MB)</p>
+              <p className="text-[10px] text-blue-600 mt-1 font-medium">✨ Uploads directly to Cloudinary (no Vercel limit!)</p>
             </label>
           </div>
 
+          {/* Upload Progress Bar */}
+          {uploading && uploadProgress > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="flex justify-between text-sm text-blue-700 mb-2 font-medium">
+                <span>Uploading to Cloudinary...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-3 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 h-full transition-all duration-300 ease-out rounded-full"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-4 pt-4">
-            <button onClick={onClose} className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold">Cancel</button>
+            <button onClick={onClose} disabled={uploading} className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold disabled:opacity-50">Cancel</button>
             <button
               onClick={onSubmit}
               disabled={uploading}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold flex justify-center items-center gap-2"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold flex justify-center items-center gap-2 disabled:opacity-50"
             >
-              {uploading ? <Loader2 className="animate-spin" /> : 'Publish Resource'}
+              {uploading ? (
+                <>
+                  <Loader2 className="animate-spin" />
+                  {uploadProgress > 0 && uploadProgress < 100 ? 'Uploading...' : 'Saving...'}
+                </>
+              ) : 'Publish Resource'}
             </button>
           </div>
         </div>
@@ -1091,7 +1113,7 @@ export default function SaveethaBase() {
         {/* Modal Portals */}
 
         {/* Modal Portals */}
-        {showUploadModal && <UploadModal show={showUploadModal} onClose={() => setShowUploadModal(false)} form={uploadForm} setForm={setUploadForm} onSubmit={handleUploadSubmit} uploading={uploading} onFileChange={handleFileChange} />}
+        {showUploadModal && <UploadModal show={showUploadModal} onClose={() => setShowUploadModal(false)} form={uploadForm} setForm={setUploadForm} onSubmit={handleUpload} uploading={uploading} uploadProgress={uploadProgress} onFileChange={handleFileChange} />}
         {showProfileModal && <ProfileModal show={showProfileModal} onClose={() => setShowProfileModal(false)} user={user} onSignOut={signOut} />}
         {showRequestForm && <RequestModal show={showRequestForm} onClose={() => setShowRequestForm(false)} form={requestForm} setForm={setRequestForm} onSubmit={handleRequestSubmit} />}
 
