@@ -1,115 +1,124 @@
 
-import { NextResponse } from 'next/server';
-import cloudinary from '@/lib/cloudinary';
+import { NextResponse } from 'next/server'
+import { extractPublicIdFromUrl, generateDownloadUrl } from '@/lib/cloudinary'
 
 /**
- * FORCED STREAMING DOWNLOAD MODEL
- * This API bypasses Cloudinary's CDN delivery restrictions by:
- * 1. Generating a signed URL for the asset.
- * 2. Fetching the asset contents on the server-side.
- * 3. Piping the binary stream directly to the client.
+ * ENHANCED DOWNLOAD API
+ * Uses server-side signed URLs with proper authentication to bypass Cloudinary delivery restrictions.
+ * Supports both Cloudinary URLs and direct URLs.
  */
 export async function GET(request) {
-    const { searchParams } = new URL(request.url);
-    let fileUrl = searchParams.get('url');
-    let filename = searchParams.get('filename') || 'download.pdf';
+    const { searchParams } = new URL(request.url)
+    let fileUrl = searchParams.get('url')
+    let filename = searchParams.get('filename') || 'download.pdf'
 
     if (!fileUrl) {
-        return NextResponse.json({ error: 'Missing file URL' }, { status: 400 });
+        return NextResponse.json({ error: 'Missing file URL' }, { status: 400 })
     }
 
     try {
-        fileUrl = fileUrl.trim();
-        filename = filename.trim().replace(/[/\\?%*:|"<>]/g, '-');
+        fileUrl = fileUrl.trim()
+        // Sanitize filename to prevent path traversal
+        filename = filename.trim().replace(/[/\\?%*:|"<>]/g, '-')
 
-        // Extract Cloudinary public ID and resource type
-        let publicId = '';
-        let resourceType = 'raw'; // Default to raw for PDFs/Docs
+        console.log(`[Download] Processing download request for: ${filename}`)
 
+        let downloadUrl = fileUrl
+
+        // If it's a Cloudinary URL, generate a signed download URL
         if (fileUrl.includes('cloudinary.com')) {
-            try {
-                const urlObj = new URL(fileUrl);
-                const pathParts = urlObj.pathname.split('/').filter(p => p);
-                const uploadIndex = pathParts.indexOf('upload');
+            const { publicId, resourceType } = extractPublicIdFromUrl(fileUrl)
 
-                if (uploadIndex !== -1 && uploadIndex > 0) {
-                    resourceType = pathParts[uploadIndex - 1] || 'raw';
-                    // Skip transformations and versions
-                    let startIndex = uploadIndex + 1;
-                    while (startIndex < pathParts.length) {
-                        const part = pathParts[startIndex];
-                        if ((part.startsWith('s--') && part.endsWith('--')) ||
-                            part.startsWith('fl_') ||
-                            (part.startsWith('v') && /^v\d+$/.test(part))) {
-                            startIndex++;
-                            continue;
-                        }
-                        break;
-                    }
+            if (publicId) {
+                console.log(`[Download] Extracted public ID: ${publicId} (type: ${resourceType})`)
 
-                    const fullPath = pathParts.slice(startIndex).join('/');
-                    if (resourceType === 'raw') {
-                        publicId = fullPath;
-                    } else {
-                        const lastDotIndex = fullPath.lastIndexOf('.');
-                        publicId = lastDotIndex !== -1 ? fullPath.substring(0, lastDotIndex) : fullPath;
-                    }
+                try {
+                    // Generate signed download URL with attachment flag
+                    downloadUrl = generateDownloadUrl(publicId, filename, resourceType)
+                    console.log(`[Download] Generated signed download URL`)
+                } catch (urlError) {
+                    console.warn(`[Download] Failed to generate signed URL, using original:`, urlError.message)
+                    // Fall back to original URL
                 }
-            } catch (e) {
-                console.warn('[Download] URL parsing failed, using direct URL:', e.message);
+            } else {
+                console.warn(`[Download] Could not extract public ID from URL, using direct fetch`)
             }
         }
 
-        // Generate the most authoritative signed URL possible for the server to fetch
-        let fetchUrl = fileUrl;
-        if (publicId) {
-            fetchUrl = cloudinary.url(publicId, {
-                resource_type: resourceType,
-                sign_url: true,
-                secure: true
-            });
-        }
+        // Fetch the file from Cloudinary (or direct URL)
+        console.log(`[Download] Fetching file from URL`)
 
-        console.log(`[Download] Forcing server-side stream for: ${publicId || fileUrl}`);
-
-        // --- THE WORKING MODEL: Server-side Fetch & Stream ---
-        const response = await fetch(fetchUrl);
-
-        if (!response.ok) {
-            console.error(`[Download] Fetch failed with status ${response.status}: ${response.statusText}`);
-            // If the signed one fails, try one last time with the raw URL provided
-            if (fetchUrl !== fileUrl) {
-                const retryResponse = await fetch(fileUrl);
-                if (retryResponse.ok) return pipeResponse(retryResponse, filename);
+        const fetchOptions = {
+            method: 'GET',
+            headers: {
+                'User-Agent': 'SaveethaBase-Download-Proxy/1.0'
             }
-            throw new Error(`Cloudinary returned ${response.status}: ${response.statusText}`);
         }
 
-        return await pipeResponse(response, filename);
+        let response
+        let lastError
+
+        // Try up to 3 times with exponential backoff
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                response = await fetch(downloadUrl, fetchOptions)
+
+                if (response.ok) {
+                    break // Success!
+                }
+
+                lastError = `HTTP ${response.status}: ${response.statusText}`
+                console.warn(`[Download] Attempt ${attempt} failed: ${lastError}`)
+
+                // Wait before retry (exponential backoff)
+                if (attempt < 3) {
+                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 500))
+                }
+            } catch (fetchError) {
+                lastError = fetchError.message
+                console.warn(`[Download] Attempt ${attempt} error:`, lastError)
+
+                if (attempt < 3) {
+                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 500))
+                }
+            }
+        }
+
+        if (!response || !response.ok) {
+            throw new Error(`Failed to fetch file after 3 attempts. Last error: ${lastError}`)
+        }
+
+        // Stream the response to the client
+        const contentType = response.headers.get('Content-Type') || 'application/octet-stream'
+        const contentLength = response.headers.get('Content-Length')
+
+        console.log(`[Download] Streaming ${contentLength || 'unknown'} bytes as ${contentType}`)
+
+        const headers = new Headers()
+        headers.set('Content-Type', contentType)
+        headers.set('Content-Disposition', `attachment; filename="${filename}"`)
+        if (contentLength) {
+            headers.set('Content-Length', contentLength)
+        }
+        headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+        headers.set('Pragma', 'no-cache')
+        headers.set('Expires', '0')
+        // Security headers
+        headers.set('X-Content-Type-Options', 'nosniff')
+        headers.set('Content-Security-Policy', "default-src 'none'")
+
+        // Return the file stream directly
+        return new NextResponse(response.body, { headers })
 
     } catch (error) {
-        console.error('Download API Error:', error);
+        console.error('[Download] Download error:', error)
+
         return NextResponse.json({
             error: 'Download failed',
-            message: error.message || 'An unexpected error occurred'
-        }, { status: 500 });
+            message: error.message || 'An unexpected error occurred',
+            url: fileUrl,
+            filename: filename,
+            suggestion: 'The file may be blocked, deleted, or temporarily unavailable. Please try again or contact support.'
+        }, { status: 500 })
     }
-}
-
-/**
- * Utility to pipe fetch response to NextResponse
- */
-async function pipeResponse(response, filename) {
-    const blob = await response.blob();
-    const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
-
-    console.log(`[Download] Streaming ${blob.size} bytes as ${contentType}`);
-
-    return new NextResponse(blob, {
-        headers: {
-            'Content-Type': contentType,
-            'Content-Disposition': `attachment; filename="${filename}"`,
-            'Cache-Control': 'no-cache',
-        }
-    });
 }
