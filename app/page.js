@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Upload, Bell, Heart, Share2, FileText, BookOpen, ThumbsUp, Download, Filter, X, Plus, Loader2, CheckCircle, AlertCircle, LogOut, Trophy, Clock, Sparkles, MessageSquare, Award } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
-import { uploadToCloudinary } from '@/lib/cloudinary-upload';
+import { uploadToSupabase } from '@/lib/supabase-storage';
 import NotificationCenter from '@/components/NotificationCenter';
 import ReviewsModal from '@/components/ReviewsModal';
 import AchievementModal from '@/components/AchievementModal';
@@ -657,42 +657,21 @@ export default function SaveethaBase() {
     setUploadProgress(0); // Reset progress
 
     try {
-      // 1. Upload DIRECTLY to Cloudinary (bypasses Vercel!)
-      console.log('[Upload] Starting direct upload to Cloudinary...');
+      // 1. Upload to Supabase Storage (no more Cloudinary blocking!)
+      console.log('[Upload] Starting upload to Supabase Storage...');
 
-      const uploadData = await uploadToCloudinary(uploadForm.file, {
+      const uploadData = await uploadToSupabase(uploadForm.file, {
+        user,
         onProgress: (progress) => {
           setUploadProgress(progress);
           console.log(`[Upload] Progress: ${progress}%`);
         }
       });
 
-      console.log('[Upload] Cloudinary upload successful:', uploadData.public_id);
+      console.log('[Upload] Supabase upload successful!');
+      console.log('[Upload] Public URL:', uploadData.publicUrl);
 
-      // 1.5: CRITICAL - Force public access (workaround for blocked delivery)
-      console.log('[Upload] Forcing public access via Admin API...');
-      try {
-        const unblockRes = await fetch('/api/unblock-after-upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            publicId: uploadData.public_id,
-            resourceType: uploadData.resource_type || 'raw'
-          })
-        });
-
-        if (unblockRes.ok) {
-          const unblockData = await unblockRes.json();
-          console.log('[Upload] File unblocked! Access mode:', unblockData.accessMode);
-        } else {
-          console.warn('[Upload] Unblock failed, but continuing...');
-        }
-      } catch (unblockError) {
-        console.warn('[Upload] Unblock error:', unblockError.message);
-        // Continue anyway - file might still work
-      }
-
-      // 2. Save ONLY metadata to Supabase (tiny payload, no size limit!)
+      // 2. Save metadata to database
       const fileData = {
         title: uploadForm.title,
         subject_name: uploadForm.subjectName,
@@ -702,10 +681,10 @@ export default function SaveethaBase() {
         department: uploadForm.department,
         year: parseInt(uploadForm.year),
         semester: parseInt(uploadForm.semester),
-        file_url: uploadData.secure_url,
-        cloudinary_public_id: uploadData.public_id,
+        file_url: uploadData.publicUrl,
+        storage_path: uploadData.path, // Store path for deletion later
         file_type: uploadForm.file.name.split('.').pop(),
-        download_url: uploadData.secure_url, // Simple public URL
+        download_url: uploadData.publicUrl, // Direct download, no proxy needed!
         requestId: uploadForm.requestId
       };
 
