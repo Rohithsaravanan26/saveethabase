@@ -1,31 +1,19 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
-import { Search, Upload, Bell, Heart, Share2, FileText, BookOpen, ThumbsUp, Download, Filter, X, Plus, Loader2, CheckCircle, AlertCircle, LogOut, Trophy, Clock, Sparkles, MessageSquare, Award } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { Search, Upload, Bell, Heart, Share2, FileText, BookOpen, ThumbsUp, Download, Filter, X, Plus, Loader2, CheckCircle, AlertCircle, LogOut, Trophy, Clock, Sparkles, MessageSquare, Award, Users, GraduationCap, FolderOpen } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import NotificationCenter from '@/components/NotificationCenter';
 import ReviewsModal from '@/components/ReviewsModal';
 import AchievementModal from '@/components/AchievementModal';
-import AdWallModal from '@/components/AdWallModal';
 import AdSenseUnit from '@/components/AdSenseUnit';
 
 // Initialize Supabase Client
-// Initialize Supabase Client
 const supabase = createClient();
 
-// Mock Data & Definitions
-const MOCK_NOTIFICATIONS = [
-  { id: 'n1', type: 'achievement', title: 'Achievement Unlocked!', message: 'You earned "First Steps" badge', read: false, created_at: new Date().toISOString() },
-  { id: 'n2', type: 'review', title: 'New Review', message: 'Priya rated your resource 5 stars', read: false, created_at: new Date(Date.now() - 900000).toISOString() },
-  { id: 'n3', type: 'download', title: '100 Downloads!', message: 'Your DBMS Notes reached 100 downloads', read: true, created_at: new Date(Date.now() - 3600000).toISOString() }
-];
 
-const ACHIEVEMENTS_DEF = [
-  { id: 'first_steps', name: 'First Steps', max: 1, rarity: 'common', icon: <Upload size={24} />, progress: 1, unlocked: true },
-  { id: 'helpful_hand', name: 'Helpful Hand', max: 5, rarity: 'rare', icon: <Heart size={24} />, progress: 3, unlocked: false },
-  { id: 'knowledge_sharer', name: 'Knowledge Sharer', max: 10, rarity: 'epic', icon: <BookOpen size={24} />, progress: 2, unlocked: false },
-  { id: 'legend', name: 'Legend', max: 50, rarity: 'legendary', icon: <Trophy size={24} />, progress: 0, unlocked: false }
-];
 // --- Modal Components ---
 
 const DownloadModal = ({ show, onClose, onDownload, processing, countdown, statusMessage, downloadReady }) => {
@@ -199,7 +187,7 @@ const ProfileModal = ({ show, onClose, user, onSignOut }) => {
     <div className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl p-8">
         <div className="flex items-center gap-4 mb-6">
-          <img src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.name}`} className="w-20 h-20 rounded-full" />
+          <Image src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.name}`} className="w-20 h-20 rounded-full" width={80} height={80} alt={user?.name || 'User avatar'} />
           <div>
             <h3 className="text-2xl font-bold">{user?.name}</h3>
             <p className="text-gray-500">{user?.email}</p>
@@ -290,7 +278,6 @@ export default function SaveethaBase() {
   const [showDownloadModal, setShowDownloadModal] = useState(false);
 
   // Interaction States
-  // Interaction States
   const [selectedFile, setSelectedFile] = useState(null);
   const [countdown, setCountdown] = useState(15);
   const [downloadReady, setDownloadReady] = useState(false);
@@ -301,7 +288,6 @@ export default function SaveethaBase() {
   // New Feature States
   const [showNotifications, setShowNotifications] = useState(false);
   const [showReviewsModal, setShowReviewsModal] = useState(false);
-  const [showAdWall, setShowAdWall] = useState(false);
   const [selectedAchievement, setSelectedAchievement] = useState(null);
   const [notifications, setNotifications] = useState([]);
 
@@ -313,16 +299,17 @@ export default function SaveethaBase() {
     { id: 'legend', name: 'Legend', max: 50, rarity: 'legendary', icon: <Trophy size={24} />, progress: user?.points || 0, unlocked: (user?.points || 0) >= 1000 }
   ];
 
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase.from('notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+    if (data) setNotifications(data);
+  }, [user]);
+
   useEffect(() => {
     if (user) {
       fetchNotifications();
     }
-  }, [user]);
-
-  const fetchNotifications = async () => {
-    const { data } = await supabase.from('notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-    if (data) setNotifications(data);
-  };
+  }, [user, fetchNotifications]);
 
 
   // Filters
@@ -360,42 +347,12 @@ export default function SaveethaBase() {
   const departments = ['CSE', 'ECE', 'MECH', 'CIVIL', 'EEE', 'IT'];
   const years = [1, 2, 3, 4];
 
-  const statusMessages = [
-    'Scanning for integrity...',
-    'Verifying file authenticity...',
-    'Connecting to secure server...',
-    'Preparing download package...',
-    'Optimizing file transfer...',
-    'Finalizing security checks...',
-    'Establishing secure connection...'
-  ];
+
 
   // --- Authentication ---
-  useEffect(() => {
-    checkUser();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        fetchProfile(session.user.id);
-      } else {
-        setUser(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      fetchProfile(session.user.id);
-    } else {
-      setLoading(false);
-    }
-  };
-
-  const fetchProfile = async (userId) => {
+  const fetchProfile = useCallback(async (userId) => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
@@ -407,7 +364,29 @@ export default function SaveethaBase() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const checkUser = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      fetchProfile(session.user.id);
+    } else {
+      setLoading(false);
+    }
+  }, [fetchProfile]);
+
+  useEffect(() => {
+    checkUser();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        fetchProfile(session.user.id);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [checkUser, fetchProfile]);
 
   const signInWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
@@ -424,12 +403,7 @@ export default function SaveethaBase() {
   };
 
   // --- Data Fetching ---
-  useEffect(() => {
-    if (activeTab === 'resources') fetchFiles();
-    else fetchRequests();
-  }, [activeTab, filters, searchQuery]);
-
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     setFilesLoading(true);
     try {
       const params = new URLSearchParams();
@@ -449,9 +423,6 @@ export default function SaveethaBase() {
           const reqRes = await fetch(`/api/requests?search=${searchQuery}`);
           const reqData = await reqRes.json();
           if (reqRes.ok) {
-            // We will store these in a specialized state or just reuse 'requests' 
-            // but typically we should show them plainly. 
-            // For now, let's put them in 'requests' and we can conditionally render a message.
             setRequests(reqData);
           }
         }
@@ -461,10 +432,9 @@ export default function SaveethaBase() {
     } finally {
       setFilesLoading(false);
     }
-  };
+  }, [filters, searchQuery]);
 
-
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     try {
       const res = await fetch('/api/requests');
       const data = await res.json();
@@ -472,7 +442,12 @@ export default function SaveethaBase() {
     } catch (error) {
       console.error('Error fetching requests:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'resources') fetchFiles();
+    else fetchRequests();
+  }, [activeTab, fetchFiles, fetchRequests]);
 
   // --- Effects ---
   useEffect(() => {
@@ -487,8 +462,17 @@ export default function SaveethaBase() {
 
   useEffect(() => {
     if (showDownloadModal && countdown > 0) {
+      const msgs = [
+        'Scanning for integrity...',
+        'Verifying file authenticity...',
+        'Connecting to secure server...',
+        'Preparing download package...',
+        'Optimizing file transfer...',
+        'Finalizing security checks...',
+        'Establishing secure connection...'
+      ];
       const msgTimer = setInterval(() => {
-        setStatusMessage(statusMessages[Math.floor(Math.random() * statusMessages.length)]);
+        setStatusMessage(msgs[Math.floor(Math.random() * msgs.length)]);
       }, 2000);
       return () => clearInterval(msgTimer);
     }
@@ -506,52 +490,44 @@ export default function SaveethaBase() {
       return;
     }
     setSelectedFile(file);
-    setShowAdWall(true); // Trigger AdWall instead of old modal
+    // Direct download without ad-wall
+    handleActualDownloadDirect(file);
   };
 
-  const handleActualDownload = async () => {
-    if (!selectedFile || !selectedFile.file_url) return;
+  const handleActualDownloadDirect = async (file) => {
+    if (!file || !file.file_url) return;
 
-    let filename = selectedFile.title || 'download';
-    if (selectedFile.file_type && !filename.endsWith(`.${selectedFile.file_type}`)) {
-      filename += `.${selectedFile.file_type}`;
+    let filename = file.title || 'download';
+    if (file.file_type && !filename.endsWith(`.${file.file_type}`)) {
+      filename += `.${file.file_type}`;
     }
 
-    showToast('Starting high-speed download...');
+    showToast('Starting download...');
 
     try {
-      // THE REAL SOLUTION: Fetch as Blob to bypass browser preview engines and Vercel limits
-      const response = await fetch(selectedFile.file_url);
-
+      const response = await fetch(file.file_url);
       if (!response.ok) {
-        // Fallback to proxy if direct fetch fails (CORS)
-        window.location.href = `/api/download?url=${encodeURIComponent(selectedFile.file_url)}&filename=${encodeURIComponent(filename)}`;
+        window.location.href = `/api/download?url=${encodeURIComponent(file.file_url)}&filename=${encodeURIComponent(filename)}`;
         return;
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
-
-      // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-
       showToast('Download complete!');
-      setTimeout(() => setShowAdWall(false), 1500);
-
     } catch (error) {
       console.warn('Direct fetch failed, using proxy fallback:', error);
-      // Final fallback to the proxy
-      window.location.href = `/api/download?url=${encodeURIComponent(selectedFile.file_url)}&filename=${encodeURIComponent(filename)}`;
-      setTimeout(() => setShowAdWall(false), 2000);
+      window.location.href = `/api/download?url=${encodeURIComponent(file.file_url)}&filename=${encodeURIComponent(filename)}`;
     }
   };
+
+
 
 
   const handleLike = async (fileId) => {
@@ -764,7 +740,7 @@ export default function SaveethaBase() {
               <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-3 pl-2 pr-5 py-2 bg-white/80 border border-slate-200/60 rounded-full hover:shadow-lg transition-all hover:scale-105 active:scale-95 group">
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full blur opacity-50"></div>
-                  <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.name}&background=667eea&color=fff`} className="relative w-10 h-10 rounded-full ring-2 ring-white group-hover:ring-blue-400 transition-all" alt={user.name} />
+                  <Image src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.name}&background=667eea&color=fff`} className="relative w-10 h-10 rounded-full ring-2 ring-white group-hover:ring-blue-400 transition-all" width={40} height={40} alt={user.name} />
                 </div>
                 <div className="flex flex-col items-start">
                   <span className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{user.name.split(' ')[0]}</span>
@@ -795,6 +771,48 @@ export default function SaveethaBase() {
               Discover <span className="font-bold text-gradient-blue">premium study resources</span> shared by seniors and toppers.
               Accelerate your academic journey today.
             </p>
+
+            {/* Informational Content for All Visitors */}
+            {!user && (
+              <div className="mt-10 max-w-4xl mx-auto">
+                <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-lg border border-slate-200/60 p-8">
+                  <h3 className="text-2xl font-bold text-slate-800 mb-4 text-left">What is SaveethaBase?</h3>
+                  <p className="text-slate-600 leading-relaxed text-left mb-6">
+                    SaveethaBase is a <strong>free, student-built academic resource sharing platform</strong> for Saveetha Engineering College.
+                    Our community of students and seniors share CIA papers, previous year question papers (PYQ), comprehensive study notes,
+                    lab records, and project files — all organized by department, year, and subject. Whether you&apos;re preparing for exams
+                    or looking for reference materials, SaveethaBase has you covered.
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-blue-50 rounded-2xl">
+                      <GraduationCap className="mx-auto text-blue-600 mb-2" size={28} />
+                      <div className="font-bold text-slate-800">6 Departments</div>
+                      <div className="text-xs text-slate-500">CSE, ECE, MECH & more</div>
+                    </div>
+                    <div className="text-center p-4 bg-purple-50 rounded-2xl">
+                      <FolderOpen className="mx-auto text-purple-600 mb-2" size={28} />
+                      <div className="font-bold text-slate-800">5 Categories</div>
+                      <div className="text-xs text-slate-500">PYQ, CIA, Notes & more</div>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-2xl">
+                      <Users className="mx-auto text-green-600 mb-2" size={28} />
+                      <div className="font-bold text-slate-800">Community Driven</div>
+                      <div className="text-xs text-slate-500">By students, for students</div>
+                    </div>
+                    <div className="text-center p-4 bg-amber-50 rounded-2xl">
+                      <Trophy className="mx-auto text-amber-600 mb-2" size={28} />
+                      <div className="font-bold text-slate-800">Earn Rewards</div>
+                      <div className="text-xs text-slate-500">Points & achievements</div>
+                    </div>
+                  </div>
+                  <div className="mt-6 text-center">
+                    <Link href="/about" className="text-blue-600 font-semibold hover:underline">
+                      Learn more about SaveethaBase →
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Stats Bar */}
@@ -835,18 +853,7 @@ export default function SaveethaBase() {
           </div>
         </div>
 
-        {/* Header Banner Ad - High Visibility */}
-        <div className="mb-8 animate-fadeIn">
-          <div className="bg-white/60 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/60 max-w-4xl mx-auto">
-            <div className="text-xs text-slate-400 text-center mb-2 font-medium">Advertisement</div>
-            <div className="flex justify-center">
-              <AdSenseUnit
-                slot="YOUR_HEADER_BANNER_SLOT"
-                style={{ display: 'block', minHeight: '90px', maxWidth: '728px', width: '100%' }}
-              />
-            </div>
-          </div>
-        </div>
+
 
         <div className="flex gap-8">
           {/* Sidebar Filters */}
@@ -923,7 +930,7 @@ export default function SaveethaBase() {
                     {requests.length > 0 && searchQuery ? (
                       <>
                         <div className="text-center">
-                          <p className="text-xl text-slate-800 font-bold mb-2">No files found for "{searchQuery}" 😕</p>
+                          <p className="text-xl text-slate-800 font-bold mb-2">No files found for &quot;{searchQuery}&quot; 😕</p>
                           <p className="text-slate-500">But we found these current requests matching your search:</p>
                         </div>
                         <div className="w-full space-y-4">
@@ -958,7 +965,7 @@ export default function SaveethaBase() {
                           <Search size={40} className="text-slate-300" />
                         </div>
                         <h3 className="text-2xl font-bold text-slate-800 mb-2">No results found</h3>
-                        <p className="text-slate-500 mb-8">{searchQuery ? `We couldn't find any resources or requests matching "${searchQuery}".` : "No resources found. Be the first to upload!"}</p>
+                        <p className="text-slate-500 mb-8">{searchQuery ? `We couldn't find any resources or requests matching &quot;${searchQuery}&quot;.` : "No resources found. Be the first to upload!"}</p>
                         {searchQuery && (
                           <button
                             onClick={() => {
@@ -1012,8 +1019,8 @@ export default function SaveethaBase() {
                       </div>
                     </div>
 
-                    {/* In-Feed Ad - Every 4th Resource */}
-                    {(index + 1) % 4 === 0 && index !== files.length - 1 && (
+                    {/* In-Feed Ad - Every 6th Resource */}
+                    {(index + 1) % 6 === 0 && index !== files.length - 1 && (
                       <div className="bg-white/60 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/60">
                         <div className="text-xs text-slate-400 text-center mb-2 font-medium">Advertisement</div>
                         <AdSenseUnit
@@ -1078,8 +1085,6 @@ export default function SaveethaBase() {
         </div>
 
         {/* Modal Portals */}
-
-        {/* Modal Portals */}
         {showUploadModal && <UploadModal show={showUploadModal} onClose={() => setShowUploadModal(false)} form={uploadForm} setForm={setUploadForm} onSubmit={handleUploadSubmit} uploading={uploading} onFileChange={handleFileChange} />}
         {showProfileModal && <ProfileModal show={showProfileModal} onClose={() => setShowProfileModal(false)} user={user} onSignOut={signOut} />}
         {showRequestForm && <RequestModal show={showRequestForm} onClose={() => setShowRequestForm(false)} form={requestForm} setForm={setRequestForm} onSubmit={handleRequestSubmit} />}
@@ -1087,23 +1092,52 @@ export default function SaveethaBase() {
         {/* New Modals */}
         {showNotifications && <NotificationCenter notifications={notifications} onClose={() => setShowNotifications(false)} onMarkAsRead={(id) => setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n))} onMarkAllAsRead={() => setNotifications(notifications.map(n => ({ ...n, read: true })))} />}
         {showReviewsModal && selectedFile && <ReviewsModal resource={selectedFile} onClose={() => setShowReviewsModal(false)} user={user} supabase={supabase} />}
-        {showAdWall && selectedFile && <AdWallModal file={selectedFile} onClose={() => setShowAdWall(false)} onDownload={handleActualDownload} />}
+
         {selectedAchievement && <AchievementModal achievement={selectedAchievement} onClose={() => setSelectedAchievement(null)} />}
 
       </main>
 
-      {/* Sticky Footer Banner - Continuous Visibility */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-slate-200/60 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-2">
-          <div className="flex justify-center items-center gap-2">
-            <div className="text-xs text-slate-400 font-medium">Advertisement</div>
-            <AdSenseUnit
-              slot="YOUR_FOOTER_BANNER_SLOT"
-              style={{ display: 'inline-block', minHeight: '50px', maxWidth: '728px', width: '100%' }}
-            />
+      {/* Site Footer */}
+      <footer className="bg-slate-900 text-white mt-16">
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-xl">
+                  <BookOpen className="text-white" size={22} />
+                </div>
+                <h3 className="text-xl font-bold">SaveethaBase</h3>
+              </div>
+              <p className="text-slate-400 text-sm leading-relaxed max-w-md">
+                A free academic resource sharing platform built by students of Saveetha Engineering College.
+                Access CIA papers, previous year questions, study materials, lab records, and more.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-bold text-sm uppercase tracking-wider text-slate-300 mb-4">Resources</h4>
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li><span className="hover:text-white transition-colors cursor-default">PYQ Papers</span></li>
+                <li><span className="hover:text-white transition-colors cursor-default">CIA Papers</span></li>
+                <li><span className="hover:text-white transition-colors cursor-default">Study Materials</span></li>
+                <li><span className="hover:text-white transition-colors cursor-default">Lab Records</span></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-sm uppercase tracking-wider text-slate-300 mb-4">Company</h4>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/about" className="text-slate-400 hover:text-white transition-colors">About Us</Link></li>
+                <li><Link href="/blog" className="text-slate-400 hover:text-white transition-colors">Blog</Link></li>
+                <li><Link href="/contact" className="text-slate-400 hover:text-white transition-colors">Contact</Link></li>
+                <li><Link href="/privacy" className="text-slate-400 hover:text-white transition-colors">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="text-slate-400 hover:text-white transition-colors">Terms of Service</Link></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-slate-800 pt-6 text-center text-sm text-slate-500">
+            <p>&copy; {new Date().getFullYear()} SaveethaBase. All rights reserved. Built with ❤️ by students of Saveetha Engineering College.</p>
           </div>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
