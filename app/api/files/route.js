@@ -62,6 +62,7 @@ export async function POST(request) {
             uploader_id: user.id,
             uploader_name: profile?.name || 'Anonymous',
             uploader_avatar: profile?.avatar_url,
+            download_url: body.download_url || null, // Store authenticated download URL
         }
 
         // ... existing insert code ...

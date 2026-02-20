@@ -1,0 +1,25 @@
+{
+    "functions": {
+        "app/api/upload/route.js": {
+            "maxDuration": 60,
+            "memory": 1024
+        }
+    },
+    "rewrites": [
+        {
+            "source": "/api/:path*",
+            "destination": "/api/:path*"
+        }
+    ],
+    "headers": [
+        {
+            "source": "/api/upload",
+            "headers": [
+                {
+                    "key": "Access-Control-Allow-Origin",
+                    "value": "*"
+                }
+            ]
+        }
+    ]
+}

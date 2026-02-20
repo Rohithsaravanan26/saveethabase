@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Search, Upload, Bell, Heart, Share2, FileText, BookOpen, ThumbsUp, Download, Filter, X, Plus, Loader2, CheckCircle, AlertCircle, LogOut, Trophy, Clock, Sparkles, MessageSquare, Award, Users, GraduationCap, FolderOpen } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
+import { uploadToSupabase } from '@/lib/supabase-storage';
 import NotificationCenter from '@/components/NotificationCenter';
 import ReviewsModal from '@/components/ReviewsModal';
 import AchievementModal from '@/components/AchievementModal';
@@ -89,7 +90,7 @@ const DownloadModal = ({ show, onClose, onDownload, processing, countdown, statu
   );
 };
 
-const UploadModal = ({ show, onClose, form, setForm, onSubmit, uploading, onFileChange }) => {
+const UploadModal = ({ show, onClose, form, setForm, onSubmit, uploading, uploadProgress = 0, onFileChange }) => {
   if (!show) return null;
   const categories = ['PYQ', 'CIA Paper', 'Study Material', 'Lab Record', 'Project File'];
   const departments = ['CSE', 'ECE', 'MECH', 'CIVIL', 'EEE', 'IT'];
@@ -153,18 +154,40 @@ const UploadModal = ({ show, onClose, form, setForm, onSubmit, uploading, onFile
             <label htmlFor="file-upload" className="cursor-pointer">
               <Upload className="mx-auto text-blue-600 mb-3" size={48} />
               <p className="text-base text-gray-700 font-semibold mb-1">{form.file ? form.file.name : 'Click to upload'}</p>
-              <p className="text-[10px] text-orange-600 mt-2 font-medium">⚠️ Max 10MB (Cloudinary limit). Large files may have download issues.</p>
+              <p className="text-xs text-gray-500 mt-2">Supports PDF and DOCX files (Max 10MB)</p>
+              <p className="text-[10px] text-blue-600 mt-1 font-medium">✨ Uploads directly to Cloudinary (no Vercel limit!)</p>
             </label>
           </div>
 
+          {/* Upload Progress Bar */}
+          {uploading && uploadProgress > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="flex justify-between text-sm text-blue-700 mb-2 font-medium">
+                <span>Uploading to Cloudinary...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-3 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 h-full transition-all duration-300 ease-out rounded-full"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-4 pt-4">
-            <button onClick={onClose} className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold">Cancel</button>
+            <button onClick={onClose} disabled={uploading} className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold disabled:opacity-50">Cancel</button>
             <button
               onClick={onSubmit}
               disabled={uploading}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold flex justify-center items-center gap-2"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold flex justify-center items-center gap-2 disabled:opacity-50"
             >
-              {uploading ? <Loader2 className="animate-spin" /> : 'Publish Resource'}
+              {uploading ? (
+                <>
+                  <Loader2 className="animate-spin" />
+                  {uploadProgress > 0 && uploadProgress < 100 ? 'Uploading...' : 'Saving...'}
+                </>
+              ) : 'Publish Resource'}
             </button>
           </div>
         </div>
@@ -284,6 +307,7 @@ export default function SaveethaBase() {
   const [statusMessage, setStatusMessage] = useState('');
   const [toast, setToast] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0); // NEW: Upload progress tracking
 
   // New Feature States
   const [showNotifications, setShowNotifications] = useState(false);
@@ -591,41 +615,35 @@ export default function SaveethaBase() {
     setUploadForm({ ...uploadForm, file });
   };
 
-  const handleUploadSubmit = async () => {
+  const handleUpload = async () => {
     if (!user) {
       showToast('Please sign in to upload', 'error');
       return;
     }
-    if (!uploadForm.file || !uploadForm.title || !uploadForm.subjectCode) {
+    if (!uploadForm.title || !uploadForm.subjectName || !uploadForm.file) {
       showToast('Please fill all required fields', 'error');
       return;
     }
 
     setUploading(true);
+    setUploadProgress(0); // Reset progress
+
     try {
-      // 1. Get Signature from backend
-      const signRes = await fetch('/api/upload/sign', { method: 'POST' });
-      const signData = await signRes.json();
-      if (!signRes.ok) throw new Error(signData.error || 'Failed to get upload signature');
+      // 1. Upload to Supabase Storage (no more Cloudinary blocking!)
+      console.log('[Upload] Starting upload to Supabase Storage...');
 
-      // 2. Upload to Cloudinary Directly from browser
-      const formData = new FormData();
-      formData.append('file', uploadForm.file);
-      formData.append('api_key', signData.apiKey);
-      formData.append('timestamp', signData.timestamp);
-      formData.append('signature', signData.signature);
-      formData.append('folder', 'saveethabase');
-      formData.append('upload_preset', 'saveethabase');
-
-      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/auto/upload`, {
-        method: 'POST',
-        body: formData
+      const uploadData = await uploadToSupabase(uploadForm.file, {
+        user,
+        onProgress: (progress) => {
+          setUploadProgress(progress);
+          console.log(`[Upload] Progress: ${progress}%`);
+        }
       });
-      const uploadData = await uploadRes.json();
 
-      if (!uploadRes.ok) throw new Error(uploadData.error?.message || 'Cloudinary upload failed');
+      console.log('[Upload] Supabase upload successful!');
+      console.log('[Upload] Public URL:', uploadData.publicUrl);
 
-      // 2. Save Metadata to Supabase (using snake_case for DB)
+      // 2. Save metadata to database
       const fileData = {
         title: uploadForm.title,
         subject_name: uploadForm.subjectName,
@@ -635,11 +653,14 @@ export default function SaveethaBase() {
         department: uploadForm.department,
         year: parseInt(uploadForm.year),
         semester: parseInt(uploadForm.semester),
-        file_url: uploadData.secure_url,
-        cloudinary_public_id: uploadData.public_id,
+        file_url: uploadData.publicUrl,
+        storage_path: uploadData.path, // Store path for deletion later
         file_type: uploadForm.file.name.split('.').pop(),
-        requestId: uploadForm.requestId // Pass requestId if it exists (for fulfillment)
+        download_url: uploadData.publicUrl, // Direct download, no proxy needed!
+        requestId: uploadForm.requestId
       };
+
+      console.log('[Upload] Saving metadata to database...');
 
       const dbRes = await fetch('/api/files', {
         method: 'POST',
@@ -647,21 +668,31 @@ export default function SaveethaBase() {
         body: JSON.stringify(fileData)
       });
 
-      if (!dbRes.ok) throw new Error('Database save failed');
+      if (!dbRes.ok) {
+        const errorData = await dbRes.json();
+        throw new Error(errorData.error || 'Database save failed');
+      }
 
+      // Success!
       showToast('Resource published successfully! +50 points');
       setShowUploadModal(false);
       setUploadForm({
         title: '', subjectName: '', subjectCode: '', faculty: '',
         category: '', department: '', year: '', semester: '', file: null, requestId: null
       });
-      fetchFiles(); // Refresh list
-      fetchProfile(user.id); // Refresh points
-      fetchRequests(); // Refresh requests (to hide fulfilled ones)
+      setUploadProgress(0);
+
+      // Refresh data
+      fetchFiles();
+      fetchProfile(user.id);
+      fetchRequests();
+
     } catch (error) {
-      showToast(error.message, 'error');
+      console.error('[Upload] Error:', error);
+      showToast(error.message || 'Upload failed', 'error');
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -760,14 +791,14 @@ export default function SaveethaBase() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <main className="max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-10">
         {/* Hero Section */}
-        <div className="mb-12 animate-fadeIn">
-          <div className="text-center mb-8">
-            <h2 className="text-5xl font-extrabold text-slate-900 mb-4 tracking-tight">
+        <div className="mb-8 md:mb-12 animate-fadeIn">
+          <div className="text-center mb-6 md:mb-8">
+            <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-2 md:mb-4 tracking-tight">
               Welcome back, <span className="text-gradient">{user ? user.name.split(' ')[0] : 'Student'}</span>! 👋
             </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-base md:text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
               Discover <span className="font-bold text-gradient-blue">premium study resources</span> shared by seniors and toppers.
               Accelerate your academic journey today.
             </p>
@@ -816,38 +847,38 @@ export default function SaveethaBase() {
           </div>
 
           {/* Stats Bar */}
-          <div className="grid grid-cols-3 gap-4 max-w-3xl mx-auto mb-8">
-            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/60 text-center hover:shadow-lg transition-all card-hover">
-              <div className="text-3xl font-bold text-gradient">{files.length}</div>
-              <div className="text-sm text-slate-600 font-medium">Resources</div>
+          <div className="grid grid-cols-3 gap-2 md:gap-4 max-w-3xl mx-auto mb-6 md:mb-8">
+            <div className="bg-white/80 backdrop-blur-sm p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-200/60 text-center hover:shadow-lg transition-all card-hover">
+              <div className="text-xl md:text-3xl font-bold text-gradient">{files.length}</div>
+              <div className="text-xs md:text-sm text-slate-600 font-medium">Resources</div>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/60 text-center hover:shadow-lg transition-all card-hover">
-              <div className="text-3xl font-bold text-gradient-blue">{requests.length}</div>
-              <div className="text-sm text-slate-600 font-medium">Active Requests</div>
+            <div className="bg-white/80 backdrop-blur-sm p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-200/60 text-center hover:shadow-lg transition-all card-hover">
+              <div className="text-xl md:text-3xl font-bold text-gradient-blue">{requests.length}</div>
+              <div className="text-xs md:text-sm text-slate-600 font-medium">Active Requests</div>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/60 text-center hover:shadow-lg transition-all card-hover">
-              <div className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{user?.uploads_count || 0}</div>
-              <div className="text-sm text-slate-600 font-medium">Your Uploads</div>
+            <div className="bg-white/80 backdrop-blur-sm p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-200/60 text-center hover:shadow-lg transition-all card-hover">
+              <div className="text-xl md:text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{user?.uploads_count || 0}</div>
+              <div className="text-xs md:text-sm text-slate-600 font-medium">Your Uploads</div>
             </div>
           </div>
 
           {/* Search and Action Bar */}
-          <div className="flex gap-4 max-w-4xl mx-auto">
+          <div className="flex flex-col md:flex-row gap-4 max-w-4xl mx-auto">
             <div className="relative flex-1 group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors z-10" size={22} />
+              <Search className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors z-10" size={20} />
               <input
                 type="text"
-                placeholder="Search for subjects, codes, topics, or materials..."
-                className="w-full pl-14 pr-6 py-5 bg-white/90 backdrop-blur-sm border-2 border-slate-200 rounded-2xl shadow-md focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all text-lg font-medium placeholder:text-slate-400"
+                placeholder="Search resources..."
+                className="w-full pl-12 md:pl-14 pr-4 md:pr-6 py-3 md:py-5 bg-white/90 backdrop-blur-sm border-2 border-slate-200 rounded-xl md:rounded-2xl shadow-md focus:shadow-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all text-base md:text-lg font-medium placeholder:text-slate-400"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
             <button
               onClick={() => setShowUploadModal(true)}
-              className="btn-gradient text-white px-10 py-5 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center gap-3 whitespace-nowrap"
+              className="btn-gradient text-white px-6 md:px-10 py-3 md:py-5 rounded-xl md:rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 whitespace-nowrap"
             >
-              <Upload size={22} />
+              <Upload size={20} />
               Upload Resource
             </button>
           </div>
@@ -855,32 +886,32 @@ export default function SaveethaBase() {
 
 
 
-        <div className="flex gap-8">
+        <div className="flex flex-col lg:flex-row gap-6 md:gap-8">
           {/* Sidebar Filters */}
-          <div className="w-72 flex-shrink-0 space-y-6 animate-slideIn">
-            <div className="bg-white/80 backdrop-blur-sm p-6 rounded-3xl shadow-md border border-slate-200/60">
-              <h3 className="font-bold mb-5 flex items-center gap-2 text-slate-800 text-lg">
+          <div className="w-full lg:w-72 flex-shrink-0 space-y-4 md:space-y-6 animate-slideIn order-first">
+            <div className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-md border border-slate-200/60">
+              <h3 className="font-bold mb-4 md:mb-5 flex items-center gap-2 text-slate-800 text-lg">
                 <Filter size={20} className="text-blue-600" />
                 Filters
               </h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Category</label>
-                  <select className="w-full p-3 bg-white border-2 border-slate-200 rounded-xl text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer hover:border-slate-300" onChange={e => setFilters({ ...filters, category: e.target.value })}>
+              <div className="grid grid-cols-2 md:grid-cols-1 gap-3 md:gap-4">
+                <div className="space-y-1.5 md:space-y-2 col-span-2 md:col-span-1">
+                  <label className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Category</label>
+                  <select className="w-full p-2.5 md:p-3 bg-white border-2 border-slate-200 rounded-lg md:rounded-xl text-sm md:text-base text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer hover:border-slate-300" onChange={e => setFilters({ ...filters, category: e.target.value })}>
                     <option value="all">All Categories</option>
                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Department</label>
-                  <select className="w-full p-3 bg-white border-2 border-slate-200 rounded-xl text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer hover:border-slate-300" onChange={e => setFilters({ ...filters, department: e.target.value })}>
+                <div className="space-y-1.5 md:space-y-2">
+                  <label className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Department</label>
+                  <select className="w-full p-2.5 md:p-3 bg-white border-2 border-slate-200 rounded-lg md:rounded-xl text-sm md:text-base text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer hover:border-slate-300" onChange={e => setFilters({ ...filters, department: e.target.value })}>
                     <option value="all">All Departments</option>
                     {departments.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Year</label>
-                  <select className="w-full p-3 bg-white border-2 border-slate-200 rounded-xl text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer hover:border-slate-300" onChange={e => setFilters({ ...filters, year: e.target.value })}>
+                <div className="space-y-1.5 md:space-y-2">
+                  <label className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Year</label>
+                  <select className="w-full p-2.5 md:p-3 bg-white border-2 border-slate-200 rounded-lg md:rounded-xl text-sm md:text-base text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer hover:border-slate-300" onChange={e => setFilters({ ...filters, year: e.target.value })}>
                     <option value="all">All Years</option>
                     {years.map(c => <option key={c} value={c}>Year {c}</option>)}
                   </select>
@@ -889,7 +920,7 @@ export default function SaveethaBase() {
             </div>
 
             {/* AdSense Unit - Sidebar */}
-            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-3xl shadow-md border border-slate-200/60">
+            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl md:rounded-3xl shadow-md border border-slate-200/60 hidden lg:block">
               <div className="text-xs text-slate-400 text-center mb-2 font-medium">Advertisement</div>
               <AdSenseUnit
                 slot="YOUR_SIDEBAR_AD_SLOT"
